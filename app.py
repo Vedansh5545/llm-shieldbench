@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
+import streamlit.components.v1 as components
 from src.categories import CATEGORIES, CATEGORY_DESCRIPTIONS
 from src.evaluator import run_single_evaluation
 from src.report_generator import generate_markdown_report
@@ -155,80 +155,119 @@ def apply_brand_styles() -> None:
 
 
 def render_hero() -> None:
-    logo_path = "assets/vedansh-labs-logo.png"
+    logo_b64 = image_to_base64("assets/vedansh-labs-logo.png")
 
-    if Path(logo_path).exists():
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.image(logo_path, width=160)
-
-    st.markdown(
-        """
+    if logo_b64:
+        logo_html = f"""
         <div style="
-            display:inline-flex;
+            width:96px;
+            height:96px;
+            border-radius:26px;
+            background:linear-gradient(145deg, rgba(22,32,42,0.98), rgba(11,15,20,0.98));
+            border:1px solid rgba(54,242,178,0.32);
+            box-shadow:0 0 34px rgba(54,242,178,0.16), inset 0 0 24px rgba(34,211,238,0.05);
+            display:flex;
             align-items:center;
-            gap:0.5rem;
-            padding:0.45rem 0.8rem;
-            border-radius:999px;
-            color:#36F2B2;
-            background:rgba(54,242,178,0.08);
-            border:1px solid rgba(54,242,178,0.28);
-            font-size:0.85rem;
-            letter-spacing:0.02em;
-            margin-top:1rem;
-            margin-bottom:1rem;
+            justify-content:center;
+            flex-shrink:0;
         ">
-            Vedansh Labs · Trustworthy Intelligence
+            <img src="data:image/png;base64,{logo_b64}"
+                 style="
+                    width:72px;
+                    height:72px;
+                    object-fit:contain;
+                    filter:drop-shadow(0 0 12px rgba(54,242,178,0.28));
+                 "/>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
         """
-        <h1 style="
-            font-size:3.2rem;
-            line-height:1.04;
-            font-weight:800;
-            color:#F5F1E8;
-            margin:0;
-        ">
-            LLM ShieldBench
-        </h1>
-        """,
-        unsafe_allow_html=True,
-    )
+    else:
+        logo_html = ""
 
-    st.markdown(
-        """
-        <p style="
-            font-size:1.2rem;
-            line-height:1.65;
-            color:rgba(245,241,232,0.78);
-            max-width:820px;
-            margin-top:1rem;
+    hero_html = f"""
+    <html>
+    <body style="
+        margin:0;
+        padding:0;
+        background:transparent;
+        font-family:Inter, Segoe UI, Arial, sans-serif;
+    ">
+        <div style="
+            width:100%;
+            box-sizing:border-box;
+            padding:36px;
+            border-radius:30px;
+            background:
+                radial-gradient(circle at 12% 20%, rgba(54,242,178,0.12), transparent 34%),
+                radial-gradient(circle at 86% 18%, rgba(34,211,238,0.10), transparent 32%),
+                linear-gradient(145deg, rgba(22,32,42,0.96), rgba(11,15,20,0.96));
+            border:1px solid rgba(54,242,178,0.22);
+            box-shadow:0 0 44px rgba(54,242,178,0.08);
         ">
-            Evaluate AI assistants before real users depend on them.
-            This open-source platform checks chatbot safety, reliability, hallucination behavior,
-            privacy risk, and instruction-following quality.
-        </p>
-        """,
-        unsafe_allow_html=True,
-    )
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:24px;
+            ">
+                {logo_html}
 
-    st.markdown(
-        """
-        <p style="
-            color:#F4B860;
-            font-weight:700;
-        ">
-            Building human-centered AI from research to reality.
-        </p>
-        """,
-        unsafe_allow_html=True,
-    )
+                <div>
+                    <div style="
+                        display:inline-flex;
+                        align-items:center;
+                        padding:7px 13px;
+                        border-radius:999px;
+                        color:#36F2B2;
+                        background:rgba(54,242,178,0.08);
+                        border:1px solid rgba(54,242,178,0.30);
+                        font-size:13px;
+                        font-weight:700;
+                        letter-spacing:0.02em;
+                        margin-bottom:12px;
+                    ">
+                        Vedansh Labs · Trustworthy Intelligence
+                    </div>
 
-    
+                    <h1 style="
+                        font-size:54px;
+                        line-height:1.02;
+                        font-weight:850;
+                        color:#F5F1E8;
+                        margin:0;
+                        letter-spacing:-0.04em;
+                    ">
+                        LLM ShieldBench
+                    </h1>
+
+                    <p style="
+                        font-size:18px;
+                        line-height:1.65;
+                        color:rgba(245,241,232,0.76);
+                        max-width:860px;
+                        margin-top:16px;
+                        margin-bottom:0;
+                    ">
+                        Evaluate AI assistants before real users depend on them.
+                        Test chatbot safety, reliability, hallucination behavior,
+                        privacy risk, and instruction-following quality.
+                    </p>
+
+                    <p style="
+                        color:#F4B860;
+                        font-size:16px;
+                        font-weight:750;
+                        margin-top:16px;
+                        margin-bottom:0;
+                    ">
+                        Building human-centered AI from research to reality.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    components.html(hero_html, height=285, scrolling=False)
 
 def render_score_gauge(score: int) -> None:
     fig = go.Figure(
