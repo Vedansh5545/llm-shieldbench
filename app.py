@@ -155,40 +155,80 @@ def apply_brand_styles() -> None:
 
 
 def render_hero() -> None:
-    logo_b64 = image_to_base64("assets/vedansh-labs-logo.png")
+    logo_path = "assets/vedansh-labs-logo.png"
 
-    if logo_b64:
-        logo_html = f'''
-<div style="display:flex; justify-content:center; margin-bottom:1.4rem;">
-    <img src="data:image/png;base64,{logo_b64}" 
-         style="width:160px; height:160px; object-fit:contain; filter: drop-shadow(0 0 24px rgba(54,242,178,0.20));"/>
-</div>
-'''
-    else:
-        logo_html = ""
+    if Path(logo_path).exists():
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.image(logo_path, width=160)
 
-    hero_html = f'''
-<div class="main-card">
-    {logo_html}
+    st.markdown(
+        """
+        <div style="
+            display:inline-flex;
+            align-items:center;
+            gap:0.5rem;
+            padding:0.45rem 0.8rem;
+            border-radius:999px;
+            color:#36F2B2;
+            background:rgba(54,242,178,0.08);
+            border:1px solid rgba(54,242,178,0.28);
+            font-size:0.85rem;
+            letter-spacing:0.02em;
+            margin-top:1rem;
+            margin-bottom:1rem;
+        ">
+            Vedansh Labs · Trustworthy Intelligence
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    <div class="brand-pill">Vedansh Labs · Trustworthy Intelligence</div>
+    st.markdown(
+        """
+        <h1 style="
+            font-size:3.2rem;
+            line-height:1.04;
+            font-weight:800;
+            color:#F5F1E8;
+            margin:0;
+        ">
+            LLM ShieldBench
+        </h1>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    <h1 class="hero-title">LLM ShieldBench</h1>
+    st.markdown(
+        """
+        <p style="
+            font-size:1.2rem;
+            line-height:1.65;
+            color:rgba(245,241,232,0.78);
+            max-width:820px;
+            margin-top:1rem;
+        ">
+            Evaluate AI assistants before real users depend on them.
+            This open-source platform checks chatbot safety, reliability, hallucination behavior,
+            privacy risk, and instruction-following quality.
+        </p>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    <p class="hero-subtitle">
-        Evaluate AI assistants before real users depend on them.
-        This open-source platform checks chatbot safety, reliability, hallucination behavior,
-        privacy risk, and instruction-following quality.
-    </p>
+    st.markdown(
+        """
+        <p style="
+            color:#F4B860;
+            font-weight:700;
+        ">
+            Building human-centered AI from research to reality.
+        </p>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    <p style="color:{PALETTE["human"]}; font-weight:700;">
-        Building human-centered AI from research to reality.
-    </p>
-</div>
-'''
-
-    st.markdown(hero_html, unsafe_allow_html=True)
-
+    
 
 def render_score_gauge(score: int) -> None:
     fig = go.Figure(
