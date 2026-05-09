@@ -156,32 +156,38 @@ def apply_brand_styles() -> None:
 
 def render_hero() -> None:
     logo_b64 = image_to_base64("assets/vedansh-labs-logo.png")
-    logo_html = ""
-    if logo_b64:
-        logo_html = f"""
-        <div style="display:flex; justify-content:center;">
-            <img src="data:image/png;base64,{logo_b64}" style="width:160px; height:160px; object-fit:contain; filter: drop-shadow(0 0 24px rgba(54,242,178,0.20));"/>
-        </div>
-        """
 
-    st.markdown(
-        f"""
-        <div class="main-card">
-            {logo_html}
-            <div class="brand-pill">Vedansh Labs · Trustworthy Intelligence</div>
-            <h1 class="hero-title">LLM ShieldBench</h1>
-            <p class="hero-subtitle">
-                Evaluate AI assistants before real users depend on them.
-                This open-source platform checks chatbot safety, reliability, hallucination behavior,
-                privacy risk, and instruction-following quality.
-            </p>
-            <p style="color:{PALETTE["human"]}; font-weight:700;">
-                Building human-centered AI from research to reality.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if logo_b64:
+        logo_html = f'''
+<div style="display:flex; justify-content:center; margin-bottom:1.4rem;">
+    <img src="data:image/png;base64,{logo_b64}" 
+         style="width:160px; height:160px; object-fit:contain; filter: drop-shadow(0 0 24px rgba(54,242,178,0.20));"/>
+</div>
+'''
+    else:
+        logo_html = ""
+
+    hero_html = f'''
+<div class="main-card">
+    {logo_html}
+
+    <div class="brand-pill">Vedansh Labs · Trustworthy Intelligence</div>
+
+    <h1 class="hero-title">LLM ShieldBench</h1>
+
+    <p class="hero-subtitle">
+        Evaluate AI assistants before real users depend on them.
+        This open-source platform checks chatbot safety, reliability, hallucination behavior,
+        privacy risk, and instruction-following quality.
+    </p>
+
+    <p style="color:{PALETTE["human"]}; font-weight:700;">
+        Building human-centered AI from research to reality.
+    </p>
+</div>
+'''
+
+    st.markdown(hero_html, unsafe_allow_html=True)
 
 
 def render_score_gauge(score: int) -> None:
@@ -232,7 +238,7 @@ def main() -> None:
             st.markdown(f"**{category}**")
             st.caption(CATEGORY_DESCRIPTIONS[category])
         st.markdown("---")
-        st.caption("v0.1 Research Preview")
+        st.caption("v0.1.1 Research Preview")
 
     render_hero()
 
@@ -273,10 +279,9 @@ def main() -> None:
             """,
             unsafe_allow_html=True,
         )
-
-        st.info(
-            "MVP note: This version uses a transparent rule-based evaluator. Later versions can add model-based judges, API adapters, and multi-model benchmarking."
-        )
+    st.info(
+        "MVP note: This version uses a transparent rule-based evaluator. It scores the chatbot response, not the risky wording inside the user prompt."
+    )
 
     if run_button:
         if not prompt.strip() or not response.strip():
