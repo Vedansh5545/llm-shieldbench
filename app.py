@@ -155,29 +155,18 @@ def apply_brand_styles() -> None:
 
 
 def render_hero() -> None:
-    logo_b64 = image_to_base64("assets/vedansh-labs-logo.png")
+    logo_b64 = image_to_base64("assets/vedansh-labs-logo-jukebox-bg-removed.png")
 
     if logo_b64:
         logo_html = f"""
-        <div style="
-            width:96px;
-            height:96px;
-            border-radius:26px;
-            background:linear-gradient(145deg, rgba(22,32,42,0.98), rgba(11,15,20,0.98));
-            border:1px solid rgba(54,242,178,0.32);
-            box-shadow:0 0 34px rgba(54,242,178,0.16), inset 0 0 24px rgba(34,211,238,0.05);
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            flex-shrink:0;
-        ">
-            <img src="data:image/png;base64,{logo_b64}"
-                 style="
-                    width:72px;
-                    height:72px;
-                    object-fit:contain;
-                    filter:drop-shadow(0 0 12px rgba(54,242,178,0.28));
-                 "/>
+        <div class="logo-stage">
+            <div class="logo-orbit orbit-one"></div>
+            <div class="logo-orbit orbit-two"></div>
+
+            <div class="logo-tile">
+                <div class="logo-glow"></div>
+                <img src="data:image/png;base64,{logo_b64}" class="hero-logo" />
+            </div>
         </div>
         """
     else:
@@ -185,79 +174,281 @@ def render_hero() -> None:
 
     hero_html = f"""
     <html>
-    <body style="
-        margin:0;
-        padding:0;
-        background:transparent;
-        font-family:Inter, Segoe UI, Arial, sans-serif;
-    ">
-        <div style="
-            width:100%;
-            box-sizing:border-box;
-            padding:36px;
-            border-radius:30px;
-            background:
-                radial-gradient(circle at 12% 20%, rgba(54,242,178,0.12), transparent 34%),
-                radial-gradient(circle at 86% 18%, rgba(34,211,238,0.10), transparent 32%),
-                linear-gradient(145deg, rgba(22,32,42,0.96), rgba(11,15,20,0.96));
-            border:1px solid rgba(54,242,178,0.22);
-            box-shadow:0 0 44px rgba(54,242,178,0.08);
-        ">
-            <div style="
-                display:flex;
-                align-items:center;
-                gap:24px;
-            ">
+    <head>
+        <style>
+            * {{
+                box-sizing: border-box;
+            }}
+
+            body {{
+                margin: 0;
+                padding: 0;
+                background: transparent;
+                font-family: Inter, Segoe UI, Arial, sans-serif;
+            }}
+
+            .hero-card {{
+                width: 100%;
+                min-height: 290px;
+                padding: 38px 42px;
+                border-radius: 32px;
+                background:
+                    radial-gradient(circle at 12% 18%, rgba(54,242,178,0.15), transparent 34%),
+                    radial-gradient(circle at 88% 18%, rgba(34,211,238,0.12), transparent 34%),
+                    linear-gradient(145deg, rgba(22,32,42,0.97), rgba(11,15,20,0.97));
+                border: 1px solid rgba(54,242,178,0.24);
+                box-shadow:
+                    0 0 46px rgba(54,242,178,0.08),
+                    inset 0 0 42px rgba(34,211,238,0.025);
+                overflow: hidden;
+                position: relative;
+            }}
+
+            .hero-card::before {{
+                content: "";
+                position: absolute;
+                inset: 0;
+                background:
+                    linear-gradient(120deg, transparent 0%, rgba(54,242,178,0.055) 45%, transparent 62%);
+                transform: translateX(-100%);
+                animation: sweep 7s ease-in-out infinite;
+                pointer-events: none;
+            }}
+
+            .hero-layout {{
+                position: relative;
+                z-index: 2;
+                display: flex;
+                align-items: center;
+                gap: 30px;
+            }}
+
+            .logo-stage {{
+                position: relative;
+                width: 136px;
+                height: 136px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }}
+
+            .logo-tile {{
+                position: relative;
+                width: 118px;
+                height: 118px;
+                border-radius: 30px;
+                background:
+                    radial-gradient(circle at 32% 22%, rgba(54,242,178,0.18), transparent 42%),
+                    radial-gradient(circle at 78% 80%, rgba(34,211,238,0.18), transparent 46%),
+                    linear-gradient(145deg, rgba(22,32,42,0.98), rgba(11,15,20,0.98));
+                border: 1px solid rgba(54,242,178,0.38);
+                box-shadow:
+                    0 0 28px rgba(54,242,178,0.18),
+                    0 0 58px rgba(34,211,238,0.08),
+                    inset 0 0 26px rgba(34,211,238,0.06);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: floatLogo 4.8s ease-in-out infinite;
+                overflow: hidden;
+            }}
+
+            .logo-tile::after {{
+                content: "";
+                position: absolute;
+                width: 160%;
+                height: 160%;
+                background: conic-gradient(
+                    from 180deg,
+                    transparent,
+                    rgba(54,242,178,0.18),
+                    rgba(34,211,238,0.22),
+                    transparent
+                );
+                animation: rotateGlow 8s linear infinite;
+                opacity: 0.55;
+            }}
+
+            .logo-glow {{
+                position: absolute;
+                inset: 12px;
+                border-radius: 24px;
+                background: radial-gradient(circle, rgba(54,242,178,0.18), transparent 68%);
+                filter: blur(8px);
+                animation: pulseGlow 3.2s ease-in-out infinite;
+                z-index: 1;
+            }}
+
+            .hero-logo {{
+                position: relative;
+                z-index: 3;
+                width: 92px;
+                height: 92px;
+                object-fit: contain;
+                filter:
+                    drop-shadow(0 0 10px rgba(54,242,178,0.40))
+                    drop-shadow(0 0 18px rgba(34,211,238,0.18));
+            }}
+
+            .logo-orbit {{
+                position: absolute;
+                border-radius: 999px;
+                border: 1px solid rgba(54,242,178,0.24);
+                opacity: 0.65;
+                pointer-events: none;
+            }}
+
+            .orbit-one {{
+                width: 132px;
+                height: 132px;
+                animation: orbitPulse 4.2s ease-in-out infinite;
+            }}
+
+            .orbit-two {{
+                width: 112px;
+                height: 112px;
+                border-color: rgba(34,211,238,0.20);
+                animation: orbitPulse 4.2s ease-in-out infinite reverse;
+            }}
+
+            .content {{
+                flex: 1;
+                min-width: 0;
+            }}
+
+            .brand-pill {{
+                display: inline-flex;
+                align-items: center;
+                padding: 7px 14px;
+                border-radius: 999px;
+                color: #36F2B2;
+                background: rgba(54,242,178,0.08);
+                border: 1px solid rgba(54,242,178,0.32);
+                font-size: 13px;
+                font-weight: 800;
+                letter-spacing: 0.02em;
+                margin-bottom: 13px;
+                box-shadow: 0 0 18px rgba(54,242,178,0.08);
+            }}
+
+            h1 {{
+                font-size: 56px;
+                line-height: 1.02;
+                font-weight: 900;
+                color: #F5F1E8;
+                margin: 0;
+                letter-spacing: -0.045em;
+                text-shadow: 0 0 26px rgba(245,241,232,0.08);
+            }}
+
+            .subtitle {{
+                font-size: 18px;
+                line-height: 1.65;
+                color: rgba(245,241,232,0.78);
+                max-width: 900px;
+                margin-top: 16px;
+                margin-bottom: 0;
+            }}
+
+            .tagline {{
+                color: #F4B860;
+                font-size: 16px;
+                font-weight: 800;
+                margin-top: 16px;
+                margin-bottom: 0;
+            }}
+
+            @keyframes floatLogo {{
+                0%, 100% {{
+                    transform: translateY(0px) scale(1);
+                }}
+                50% {{
+                    transform: translateY(-6px) scale(1.025);
+                }}
+            }}
+
+            @keyframes pulseGlow {{
+                0%, 100% {{
+                    opacity: 0.50;
+                    transform: scale(0.96);
+                }}
+                50% {{
+                    opacity: 1;
+                    transform: scale(1.08);
+                }}
+            }}
+
+            @keyframes rotateGlow {{
+                from {{
+                    transform: rotate(0deg);
+                }}
+                to {{
+                    transform: rotate(360deg);
+                }}
+            }}
+
+            @keyframes orbitPulse {{
+                0%, 100% {{
+                    transform: scale(0.96);
+                    opacity: 0.28;
+                }}
+                50% {{
+                    transform: scale(1.06);
+                    opacity: 0.72;
+                }}
+            }}
+
+            @keyframes sweep {{
+                0% {{
+                    transform: translateX(-120%);
+                }}
+                45%, 100% {{
+                    transform: translateX(120%);
+                }}
+            }}
+
+            @media (max-width: 760px) {{
+                .hero-card {{
+                    padding: 30px 24px;
+                }}
+
+                .hero-layout {{
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 22px;
+                }}
+
+                h1 {{
+                    font-size: 42px;
+                }}
+
+                .subtitle {{
+                    font-size: 16px;
+                }}
+            }}
+        </style>
+    </head>
+
+    <body>
+        <div class="hero-card">
+            <div class="hero-layout">
                 {logo_html}
 
-                <div>
-                    <div style="
-                        display:inline-flex;
-                        align-items:center;
-                        padding:7px 13px;
-                        border-radius:999px;
-                        color:#36F2B2;
-                        background:rgba(54,242,178,0.08);
-                        border:1px solid rgba(54,242,178,0.30);
-                        font-size:13px;
-                        font-weight:700;
-                        letter-spacing:0.02em;
-                        margin-bottom:12px;
-                    ">
+                <div class="content">
+                    <div class="brand-pill">
                         Vedansh Labs · Trustworthy Intelligence
                     </div>
 
-                    <h1 style="
-                        font-size:54px;
-                        line-height:1.02;
-                        font-weight:850;
-                        color:#F5F1E8;
-                        margin:0;
-                        letter-spacing:-0.04em;
-                    ">
-                        LLM ShieldBench
-                    </h1>
+                    <h1>LLM ShieldBench</h1>
 
-                    <p style="
-                        font-size:18px;
-                        line-height:1.65;
-                        color:rgba(245,241,232,0.76);
-                        max-width:860px;
-                        margin-top:16px;
-                        margin-bottom:0;
-                    ">
+                    <p class="subtitle">
                         Evaluate AI assistants before real users depend on them.
                         Test chatbot safety, reliability, hallucination behavior,
                         privacy risk, and instruction-following quality.
                     </p>
 
-                    <p style="
-                        color:#F4B860;
-                        font-size:16px;
-                        font-weight:750;
-                        margin-top:16px;
-                        margin-bottom:0;
-                    ">
+                    <p class="tagline">
                         Building human-centered AI from research to reality.
                     </p>
                 </div>
@@ -267,8 +458,8 @@ def render_hero() -> None:
     </html>
     """
 
-    components.html(hero_html, height=285, scrolling=False)
-
+    components.html(hero_html, height=315, scrolling=False)
+    
 def render_score_gauge(score: int) -> None:
     fig = go.Figure(
         go.Indicator(
