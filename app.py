@@ -22,14 +22,14 @@ PALETTE = {
     "human": "#F4B860",
 }
 
-
+# Utility function to convert an image file to a base64 string for embedding in HTML
 def image_to_base64(path: str) -> str:
     file_path = Path(path)
     if not file_path.exists():
         return ""
     return base64.b64encode(file_path.read_bytes()).decode("utf-8")
 
-
+# Function to inject custom CSS styles for branding and theming
 def apply_brand_styles() -> None:
     st.markdown(
         f"""
@@ -155,7 +155,7 @@ def apply_brand_styles() -> None:
 
 
 def render_hero() -> None:
-    logo_b64 = image_to_base64("assets/vedansh-labs-logo-jukebox-bg-removed.png")
+    logo_b64 = image_to_base64("assets/vedansh-labs-logox-bg-removed.png")
 
     if logo_b64:
         logo_html = f"""
@@ -459,7 +459,7 @@ def render_hero() -> None:
     """
 
     components.html(hero_html, height=315, scrolling=False)
-    
+
 def render_score_gauge(score: int) -> None:
     fig = go.Figure(
         go.Indicator(
