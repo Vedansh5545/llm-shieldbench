@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import json
 import base64
 from pathlib import Path
 
@@ -9,8 +9,15 @@ import streamlit as st
 import streamlit.components.v1 as components
 from src.categories import CATEGORIES, CATEGORY_DESCRIPTIONS
 from src.evaluator import run_single_evaluation
-from src.report_generator import generate_markdown_report
-
+from src.report_generator import (
+    generate_benchmark_markdown_report,
+    generate_markdown_report,
+)
+from src.benchmark import (
+    benchmark_to_dataframe,
+    load_benchmark_cases,
+    run_benchmark_from_responses,
+)
 
 APP_TITLE = "LLM ShieldBench"
 PALETTE = {
@@ -489,45 +496,26 @@ def render_score_gauge(score: int) -> None:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-
-def main() -> None:
-    st.set_page_config(
-        page_title="LLM ShieldBench",
-        page_icon="🛡️",
-        layout="wide",
-    )
-
-    apply_brand_styles()
-
-    with st.sidebar:
-        st.markdown("## LLM ShieldBench")
-        st.caption("Vedansh Labs · Trustworthy Intelligence")
-        st.markdown("---")
-        st.markdown("### Test Categories")
-        for category in CATEGORIES:
-            st.markdown(f"**{category}**")
-            st.caption(CATEGORY_DESCRIPTIONS[category])
-        st.markdown("---")
-        st.caption("v0.1.1 Research Preview")
-
-    render_hero()
-
+def render_single_evaluation_mode() -> None:
     st.markdown('<div class="section-title">Run a new evaluation</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns([0.9, 1.1], gap="large")
 
     with col1:
         category = st.selectbox("Evaluation category", CATEGORIES)
+
         prompt = st.text_area(
             "Original prompt",
             height=130,
             placeholder="Paste the user prompt given to the chatbot...",
         )
+
         response = st.text_area(
             "Chatbot response",
             height=180,
             placeholder="Paste the chatbot response you want to evaluate...",
         )
+
         expected_behavior = st.text_area(
             "Expected safe behavior",
             height=110,
@@ -549,8 +537,10 @@ def main() -> None:
             """,
             unsafe_allow_html=True,
         )
+
     st.info(
-        "MVP note: This version uses a transparent rule-based evaluator. It scores the chatbot response, not the risky wording inside the user prompt."
+        "MVP note: This version uses a transparent rule-based evaluator. "
+        "It scores the chatbot response, not the risky wording inside the user prompt."
     )
 
     if run_button:
@@ -580,6 +570,7 @@ def main() -> None:
                 """,
                 unsafe_allow_html=True,
             )
+
         with metric_col2:
             st.markdown(
                 f"""
@@ -590,6 +581,7 @@ def main() -> None:
                 """,
                 unsafe_allow_html=True,
             )
+
         with metric_col3:
             st.markdown(
                 f"""
@@ -628,6 +620,7 @@ def main() -> None:
         )
 
         report = generate_markdown_report(result)
+
         st.download_button(
             "Download Markdown Report",
             data=report,
@@ -639,10 +632,244 @@ def main() -> None:
         with st.expander("Preview report"):
             st.markdown(report)
 
+def render_benchmark_mode() -> None:
+    st.markdown('<div class="section-title">Benchmark Mode</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        """
+        Benchmark Mode lets you run multiple safety and reliability test cases together.
+        Paste a chatbot response for each case, then LLM ShieldBench will calculate an
+        overall trust score, category-wise scores, risk distribution, and exportable report.
+        """
+    )
+
+    test_cases = load_benchmark_cases()
+
+    if not test_cases:
+        st.error("No benchmark test cases found. Check `data/test_cases.json`.")
+        return
+
+    all_categories = sorted({case["category"] for case in test_cases})
+
+    selected_categories = st.multiselect(
+        "Select benchmark categories",
+        options=all_categories,
+        default=all_categories,
+    )
+
+    selected_cases = [
+        case for case in test_cases
+        if case["category"] in selected_categories
+    ]
+
+    if not selected_cases:
+        st.warning("Select at least one category to run the benchmark.")
+        return
+
+    preview_rows = [
+        {
+            "ID": case["id"],
+            "Title": case.get("title", ""),
+            "Category": case["category"],
+            "Prompt": case["prompt"],
+        }
+        for case in selected_cases
+    ]
+
+    with st.expander("View selected benchmark cases", expanded=False):
+        st.dataframe(pd.DataFrame(preview_rows), use_container_width=True)
+
+    st.markdown("### Paste chatbot responses")
+
+    with st.form("benchmark_form"):
+        responses_by_id = {}
+
+        for case in selected_cases:
+            with st.expander(f'{case["id"]} · {case["category"]} · {case.get("title", "")}', expanded=False):
+                st.markdown("**Prompt**")
+                st.code(case["prompt"], language="text")
+
+                st.markdown("**Expected safe behavior**")
+                st.caption(case.get("expected_safe_behavior", ""))
+
+                responses_by_id[case["id"]] = st.text_area(
+                    "Chatbot response",
+                    height=120,
+                    placeholder="Paste the chatbot response for this benchmark case...",
+                    key=f'benchmark_response_{case["id"]}',
+                )
+
+        submitted = st.form_submit_button("Run Full Benchmark", use_container_width=True)
+
+    if not submitted:
+        return
+
+    filled_responses = {
+        case_id: response
+        for case_id, response in responses_by_id.items()
+        if response.strip()
+    }
+
+    if not filled_responses:
+        st.warning("Please paste at least one chatbot response before running the benchmark.")
+        return
+
+    benchmark_result = run_benchmark_from_responses(selected_cases, filled_responses)
+    results_df = benchmark_to_dataframe(benchmark_result)
+
+    st.markdown('<div class="section-title">Benchmark results</div>', unsafe_allow_html=True)
+
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+
+    with metric_col1:
+        st.markdown(
+            f"""
+            <div class="metric-card">
+                <div class="metric-label">Overall Trust Score</div>
+                <div class="metric-value">{benchmark_result["overall_score"]} / 100</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with metric_col2:
+        st.markdown(
+            f"""
+            <div class="metric-card">
+                <div class="metric-label">Completed Test Cases</div>
+                <div class="metric-value">{benchmark_result["completed_cases"]}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with metric_col3:
+        st.markdown(
+            f"""
+            <div class="metric-card">
+                <div class="metric-label">Weakest Category</div>
+                <div style="font-size:1.25rem; font-weight:800; color:{PALETTE["human"]};">
+                    {benchmark_result["weakest_category"]}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    if benchmark_result["category_scores"]:
+        category_df = pd.DataFrame(
+            [
+                {"Category": category, "Average Score": score}
+                for category, score in benchmark_result["category_scores"].items()
+            ]
+        )
+
+        fig = go.Figure(
+            data=[
+                go.Bar(
+                    x=category_df["Category"],
+                    y=category_df["Average Score"],
+                    text=category_df["Average Score"],
+                    textposition="auto",
+                )
+            ]
+        )
+
+        fig.update_layout(
+            title="Category-wise Trust Scores",
+            xaxis_title="Category",
+            yaxis_title="Average Score",
+            yaxis=dict(range=[0, 100]),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font={"color": PALETTE["text"]},
+            margin=dict(l=20, r=20, t=50, b=40),
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("### Results table")
+    st.dataframe(results_df, use_container_width=True)
+
+    report = generate_benchmark_markdown_report(benchmark_result)
+    csv_data = results_df.to_csv(index=False)
+
+    json_data = json.dumps(
+        benchmark_result,
+        indent=2,
+        ensure_ascii=False,
+    )
+
+    download_col1, download_col2, download_col3 = st.columns(3)
+
+    with download_col1:
+        st.download_button(
+            "Download Benchmark Report",
+            data=report,
+            file_name="llm-shieldbench-benchmark-report.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+
+    with download_col2:
+        st.download_button(
+            "Download Results CSV",
+            data=csv_data,
+            file_name="llm-shieldbench-results.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+    with download_col3:
+        st.download_button(
+            "Download Results JSON",
+            data=json_data,
+            file_name="llm-shieldbench-results.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+
+    with st.expander("Preview benchmark report"):
+        st.markdown(report)
+
+def main() -> None:
+    st.set_page_config(
+        page_title="LLM ShieldBench",
+        page_icon="🛡️",
+        layout="wide",
+    )
+
+    apply_brand_styles()
+
+    with st.sidebar:
+        st.markdown("## LLM ShieldBench")
+        st.caption("Vedansh Labs · Trustworthy Intelligence")
+        st.markdown("---")
+        st.markdown("### Test Categories")
+        for category in CATEGORIES:
+            st.markdown(f"**{category}**")
+            st.caption(CATEGORY_DESCRIPTIONS[category])
+        st.markdown("---")
+        st.caption("v0.2 Benchmark Preview")
+
+    render_hero()
+
+    mode = st.radio(
+        "Evaluation mode",
+        options=["Single Evaluation", "Benchmark Mode"],
+        horizontal=True,
+    )
+
+    if mode == "Single Evaluation":
+        render_single_evaluation_mode()
+    else:
+        render_benchmark_mode()
+
     st.markdown(
         '<p class="footer-note">Built by Vedansh Labs · Building human-centered AI from research to reality.</p>',
         unsafe_allow_html=True,
     )
+
 
 
 if __name__ == "__main__":
