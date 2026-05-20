@@ -1,25 +1,28 @@
 from __future__ import annotations
-import json
+
 import base64
+import json
 from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-import streamlit.components.v1 as components
+
+from src.benchmark import (
+    benchmark_to_dataframe,
+    load_benchmark_cases,
+    run_benchmark_from_responses,
+)
 from src.categories import CATEGORIES, CATEGORY_DESCRIPTIONS
 from src.evaluator import run_single_evaluation
 from src.report_generator import (
     generate_benchmark_markdown_report,
     generate_markdown_report,
 )
-from src.benchmark import (
-    benchmark_to_dataframe,
-    load_benchmark_cases,
-    run_benchmark_from_responses,
-)
+
 
 APP_TITLE = "LLM ShieldBench"
+
 PALETTE = {
     "background": "#0B0F14",
     "surface": "#16202A",
@@ -29,14 +32,16 @@ PALETTE = {
     "human": "#F4B860",
 }
 
-# Utility function to convert an image file to a base64 string for embedding in HTML
+
 def image_to_base64(path: str) -> str:
     file_path = Path(path)
+
     if not file_path.exists():
         return ""
+
     return base64.b64encode(file_path.read_bytes()).decode("utf-8")
 
-# Function to inject custom CSS styles for branding and theming
+
 def apply_brand_styles() -> None:
     st.markdown(
         f"""
@@ -115,9 +120,20 @@ def apply_brand_styles() -> None:
             font-weight: 800;
         }}
 
-        .risk-low {{ color: {PALETTE["primary"]}; font-weight: 800; }}
-        .risk-medium {{ color: {PALETTE["human"]}; font-weight: 800; }}
-        .risk-high {{ color: #ff7b7b; font-weight: 800; }}
+        .risk-low {{
+            color: {PALETTE["primary"]};
+            font-weight: 800;
+        }}
+
+        .risk-medium {{
+            color: {PALETTE["human"]};
+            font-weight: 800;
+        }}
+
+        .risk-high {{
+            color: #ff7b7b;
+            font-weight: 800;
+        }}
 
         .section-title {{
             color: {PALETTE["text"]};
@@ -166,13 +182,13 @@ def render_hero() -> None:
 
     if logo_b64:
         logo_html = f"""
-        <div class="logo-stage">
-            <div class="logo-orbit orbit-one"></div>
-            <div class="logo-orbit orbit-two"></div>
+        <div class="vl-logo-stage">
+            <div class="vl-logo-orbit vl-orbit-one"></div>
+            <div class="vl-logo-orbit vl-orbit-two"></div>
 
-            <div class="logo-tile">
-                <div class="logo-glow"></div>
-                <img src="data:image/png;base64,{logo_b64}" class="hero-logo" />
+            <div class="vl-logo-tile">
+                <div class="vl-logo-glow"></div>
+                <img src="data:image/png;base64,{logo_b64}" class="vl-hero-logo" />
             </div>
         </div>
         """
@@ -180,292 +196,279 @@ def render_hero() -> None:
         logo_html = ""
 
     hero_html = f"""
-    <html>
-    <head>
-        <style>
-            * {{
-                box-sizing: border-box;
+    <style>
+        .vl-hero-card {{
+            width: 100%;
+            min-height: 290px;
+            padding: 38px 42px;
+            border-radius: 32px;
+            background:
+                radial-gradient(circle at 12% 18%, rgba(54,242,178,0.15), transparent 34%),
+                radial-gradient(circle at 88% 18%, rgba(34,211,238,0.12), transparent 34%),
+                linear-gradient(145deg, rgba(22,32,42,0.97), rgba(11,15,20,0.97));
+            border: 1px solid rgba(54,242,178,0.24);
+            box-shadow:
+                0 0 46px rgba(54,242,178,0.08),
+                inset 0 0 42px rgba(34,211,238,0.025);
+            overflow: hidden;
+            position: relative;
+            box-sizing: border-box;
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+        }}
+
+        .vl-hero-card::before {{
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(120deg, transparent 0%, rgba(54,242,178,0.055) 45%, transparent 62%);
+            transform: translateX(-100%);
+            animation: vlSweep 7s ease-in-out infinite;
+            pointer-events: none;
+        }}
+
+        .vl-hero-layout {{
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }}
+
+        .vl-logo-stage {{
+            position: relative;
+            width: 136px;
+            height: 136px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }}
+
+        .vl-logo-tile {{
+            position: relative;
+            width: 118px;
+            height: 118px;
+            border-radius: 30px;
+            background:
+                radial-gradient(circle at 32% 22%, rgba(54,242,178,0.18), transparent 42%),
+                radial-gradient(circle at 78% 80%, rgba(34,211,238,0.18), transparent 46%),
+                linear-gradient(145deg, rgba(22,32,42,0.98), rgba(11,15,20,0.98));
+            border: 1px solid rgba(54,242,178,0.38);
+            box-shadow:
+                0 0 28px rgba(54,242,178,0.18),
+                0 0 58px rgba(34,211,238,0.08),
+                inset 0 0 26px rgba(34,211,238,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: vlFloatLogo 4.8s ease-in-out infinite;
+            overflow: hidden;
+            box-sizing: border-box;
+        }}
+
+        .vl-logo-tile::after {{
+            content: "";
+            position: absolute;
+            width: 160%;
+            height: 160%;
+            background: conic-gradient(
+                from 180deg,
+                transparent,
+                rgba(54,242,178,0.18),
+                rgba(34,211,238,0.22),
+                transparent
+            );
+            animation: vlRotateGlow 8s linear infinite;
+            opacity: 0.55;
+        }}
+
+        .vl-logo-glow {{
+            position: absolute;
+            inset: 12px;
+            border-radius: 24px;
+            background: radial-gradient(circle, rgba(54,242,178,0.18), transparent 68%);
+            filter: blur(8px);
+            animation: vlPulseGlow 3.2s ease-in-out infinite;
+            z-index: 1;
+        }}
+
+        .vl-hero-logo {{
+            position: relative;
+            z-index: 3;
+            width: 92px;
+            height: 92px;
+            object-fit: contain;
+            filter:
+                drop-shadow(0 0 10px rgba(54,242,178,0.40))
+                drop-shadow(0 0 18px rgba(34,211,238,0.18));
+        }}
+
+        .vl-logo-orbit {{
+            position: absolute;
+            border-radius: 999px;
+            border: 1px solid rgba(54,242,178,0.24);
+            opacity: 0.65;
+            pointer-events: none;
+        }}
+
+        .vl-orbit-one {{
+            width: 132px;
+            height: 132px;
+            animation: vlOrbitPulse 4.2s ease-in-out infinite;
+        }}
+
+        .vl-orbit-two {{
+            width: 112px;
+            height: 112px;
+            border-color: rgba(34,211,238,0.20);
+            animation: vlOrbitPulse 4.2s ease-in-out infinite reverse;
+        }}
+
+        .vl-hero-content {{
+            flex: 1;
+            min-width: 0;
+        }}
+
+        .vl-brand-pill {{
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 14px;
+            border-radius: 999px;
+            color: #36F2B2;
+            background: rgba(54,242,178,0.08);
+            border: 1px solid rgba(54,242,178,0.32);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            margin-bottom: 13px;
+            box-shadow: 0 0 18px rgba(54,242,178,0.08);
+        }}
+
+        .vl-product-title {{
+            font-size: 56px;
+            line-height: 1.02;
+            font-weight: 900;
+            color: #F5F1E8;
+            margin: 0;
+            letter-spacing: -0.045em;
+            text-shadow: 0 0 26px rgba(245,241,232,0.08);
+        }}
+
+        .vl-subtitle {{
+            font-size: 18px;
+            line-height: 1.65;
+            color: rgba(245,241,232,0.78);
+            max-width: 900px;
+            margin-top: 16px;
+            margin-bottom: 0;
+        }}
+
+        .vl-tagline {{
+            color: #F4B860;
+            font-size: 16px;
+            font-weight: 800;
+            margin-top: 16px;
+            margin-bottom: 0;
+        }}
+
+        @keyframes vlFloatLogo {{
+            0%, 100% {{
+                transform: translateY(0px) scale(1);
+            }}
+            50% {{
+                transform: translateY(-6px) scale(1.025);
+            }}
+        }}
+
+        @keyframes vlPulseGlow {{
+            0%, 100% {{
+                opacity: 0.50;
+                transform: scale(0.96);
+            }}
+            50% {{
+                opacity: 1;
+                transform: scale(1.08);
+            }}
+        }}
+
+        @keyframes vlRotateGlow {{
+            from {{
+                transform: rotate(0deg);
+            }}
+            to {{
+                transform: rotate(360deg);
+            }}
+        }}
+
+        @keyframes vlOrbitPulse {{
+            0%, 100% {{
+                transform: scale(0.96);
+                opacity: 0.28;
+            }}
+            50% {{
+                transform: scale(1.06);
+                opacity: 0.72;
+            }}
+        }}
+
+        @keyframes vlSweep {{
+            0% {{
+                transform: translateX(-120%);
+            }}
+            45%, 100% {{
+                transform: translateX(120%);
+            }}
+        }}
+
+        @media (max-width: 760px) {{
+            .vl-hero-card {{
+                padding: 30px 24px;
             }}
 
-            body {{
-                margin: 0;
-                padding: 0;
-                background: transparent;
-                font-family: Inter, Segoe UI, Arial, sans-serif;
+            .vl-hero-layout {{
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 22px;
             }}
 
-            .hero-card {{
-                width: 100%;
-                min-height: 290px;
-                padding: 38px 42px;
-                border-radius: 32px;
-                background:
-                    radial-gradient(circle at 12% 18%, rgba(54,242,178,0.15), transparent 34%),
-                    radial-gradient(circle at 88% 18%, rgba(34,211,238,0.12), transparent 34%),
-                    linear-gradient(145deg, rgba(22,32,42,0.97), rgba(11,15,20,0.97));
-                border: 1px solid rgba(54,242,178,0.24);
-                box-shadow:
-                    0 0 46px rgba(54,242,178,0.08),
-                    inset 0 0 42px rgba(34,211,238,0.025);
-                overflow: hidden;
-                position: relative;
+            .vl-product-title {{
+                font-size: 42px;
             }}
 
-            .hero-card::before {{
-                content: "";
-                position: absolute;
-                inset: 0;
-                background:
-                    linear-gradient(120deg, transparent 0%, rgba(54,242,178,0.055) 45%, transparent 62%);
-                transform: translateX(-100%);
-                animation: sweep 7s ease-in-out infinite;
-                pointer-events: none;
-            }}
-
-            .hero-layout {{
-                position: relative;
-                z-index: 2;
-                display: flex;
-                align-items: center;
-                gap: 30px;
-            }}
-
-            .logo-stage {{
-                position: relative;
-                width: 136px;
-                height: 136px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-            }}
-
-            .logo-tile {{
-                position: relative;
-                width: 118px;
-                height: 118px;
-                border-radius: 30px;
-                background:
-                    radial-gradient(circle at 32% 22%, rgba(54,242,178,0.18), transparent 42%),
-                    radial-gradient(circle at 78% 80%, rgba(34,211,238,0.18), transparent 46%),
-                    linear-gradient(145deg, rgba(22,32,42,0.98), rgba(11,15,20,0.98));
-                border: 1px solid rgba(54,242,178,0.38);
-                box-shadow:
-                    0 0 28px rgba(54,242,178,0.18),
-                    0 0 58px rgba(34,211,238,0.08),
-                    inset 0 0 26px rgba(34,211,238,0.06);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                animation: floatLogo 4.8s ease-in-out infinite;
-                overflow: hidden;
-            }}
-
-            .logo-tile::after {{
-                content: "";
-                position: absolute;
-                width: 160%;
-                height: 160%;
-                background: conic-gradient(
-                    from 180deg,
-                    transparent,
-                    rgba(54,242,178,0.18),
-                    rgba(34,211,238,0.22),
-                    transparent
-                );
-                animation: rotateGlow 8s linear infinite;
-                opacity: 0.55;
-            }}
-
-            .logo-glow {{
-                position: absolute;
-                inset: 12px;
-                border-radius: 24px;
-                background: radial-gradient(circle, rgba(54,242,178,0.18), transparent 68%);
-                filter: blur(8px);
-                animation: pulseGlow 3.2s ease-in-out infinite;
-                z-index: 1;
-            }}
-
-            .hero-logo {{
-                position: relative;
-                z-index: 3;
-                width: 92px;
-                height: 92px;
-                object-fit: contain;
-                filter:
-                    drop-shadow(0 0 10px rgba(54,242,178,0.40))
-                    drop-shadow(0 0 18px rgba(34,211,238,0.18));
-            }}
-
-            .logo-orbit {{
-                position: absolute;
-                border-radius: 999px;
-                border: 1px solid rgba(54,242,178,0.24);
-                opacity: 0.65;
-                pointer-events: none;
-            }}
-
-            .orbit-one {{
-                width: 132px;
-                height: 132px;
-                animation: orbitPulse 4.2s ease-in-out infinite;
-            }}
-
-            .orbit-two {{
-                width: 112px;
-                height: 112px;
-                border-color: rgba(34,211,238,0.20);
-                animation: orbitPulse 4.2s ease-in-out infinite reverse;
-            }}
-
-            .content {{
-                flex: 1;
-                min-width: 0;
-            }}
-
-            .brand-pill {{
-                display: inline-flex;
-                align-items: center;
-                padding: 7px 14px;
-                border-radius: 999px;
-                color: #36F2B2;
-                background: rgba(54,242,178,0.08);
-                border: 1px solid rgba(54,242,178,0.32);
-                font-size: 13px;
-                font-weight: 800;
-                letter-spacing: 0.02em;
-                margin-bottom: 13px;
-                box-shadow: 0 0 18px rgba(54,242,178,0.08);
-            }}
-
-            h1 {{
-                font-size: 56px;
-                line-height: 1.02;
-                font-weight: 900;
-                color: #F5F1E8;
-                margin: 0;
-                letter-spacing: -0.045em;
-                text-shadow: 0 0 26px rgba(245,241,232,0.08);
-            }}
-
-            .subtitle {{
-                font-size: 18px;
-                line-height: 1.65;
-                color: rgba(245,241,232,0.78);
-                max-width: 900px;
-                margin-top: 16px;
-                margin-bottom: 0;
-            }}
-
-            .tagline {{
-                color: #F4B860;
+            .vl-subtitle {{
                 font-size: 16px;
-                font-weight: 800;
-                margin-top: 16px;
-                margin-bottom: 0;
             }}
+        }}
+    </style>
 
-            @keyframes floatLogo {{
-                0%, 100% {{
-                    transform: translateY(0px) scale(1);
-                }}
-                50% {{
-                    transform: translateY(-6px) scale(1.025);
-                }}
-            }}
+    <div class="vl-hero-card">
+        <div class="vl-hero-layout">
+            {logo_html}
 
-            @keyframes pulseGlow {{
-                0%, 100% {{
-                    opacity: 0.50;
-                    transform: scale(0.96);
-                }}
-                50% {{
-                    opacity: 1;
-                    transform: scale(1.08);
-                }}
-            }}
-
-            @keyframes rotateGlow {{
-                from {{
-                    transform: rotate(0deg);
-                }}
-                to {{
-                    transform: rotate(360deg);
-                }}
-            }}
-
-            @keyframes orbitPulse {{
-                0%, 100% {{
-                    transform: scale(0.96);
-                    opacity: 0.28;
-                }}
-                50% {{
-                    transform: scale(1.06);
-                    opacity: 0.72;
-                }}
-            }}
-
-            @keyframes sweep {{
-                0% {{
-                    transform: translateX(-120%);
-                }}
-                45%, 100% {{
-                    transform: translateX(120%);
-                }}
-            }}
-
-            @media (max-width: 760px) {{
-                .hero-card {{
-                    padding: 30px 24px;
-                }}
-
-                .hero-layout {{
-                    flex-direction: column;
-                    align-items: flex-start;
-                    gap: 22px;
-                }}
-
-                h1 {{
-                    font-size: 42px;
-                }}
-
-                .subtitle {{
-                    font-size: 16px;
-                }}
-            }}
-        </style>
-    </head>
-
-    <body>
-        <div class="hero-card">
-            <div class="hero-layout">
-                {logo_html}
-
-                <div class="content">
-                    <div class="brand-pill">
-                        Vedansh Labs · Trustworthy Intelligence
-                    </div>
-
-                    <h1>LLM ShieldBench</h1>
-
-                    <p class="subtitle">
-                        Evaluate AI assistants before real users depend on them.
-                        Test chatbot safety, reliability, hallucination behavior,
-                        privacy risk, and instruction-following quality.
-                    </p>
-
-                    <p class="tagline">
-                        Building human-centered AI from research to reality.
-                    </p>
+            <div class="vl-hero-content">
+                <div class="vl-brand-pill">
+                    Vedansh Labs · Trustworthy Intelligence
                 </div>
+
+                <h1 class="vl-product-title">LLM ShieldBench</h1>
+
+                <p class="vl-subtitle">
+                    Evaluate AI assistants before real users depend on them.
+                    Test chatbot safety, reliability, hallucination behavior,
+                    privacy risk, and instruction-following quality.
+                </p>
+
+                <p class="vl-tagline">
+                    Building human-centered AI from research to reality.
+                </p>
             </div>
         </div>
-    </body>
-    </html>
+    </div>
     """
 
-    components.html(hero_html, height=315, scrolling=False)
+    st.html(hero_html)
+
 
 def render_score_gauge(score: int) -> None:
     fig = go.Figure(
@@ -487,6 +490,7 @@ def render_score_gauge(score: int) -> None:
             },
         )
     )
+
     fig.update_layout(
         height=280,
         margin=dict(l=20, r=20, t=30, b=20),
@@ -494,7 +498,64 @@ def render_score_gauge(score: int) -> None:
         plot_bgcolor="rgba(0,0,0,0)",
         font={"color": PALETTE["text"]},
     )
+
     st.plotly_chart(fig, use_container_width=True)
+
+
+def get_status_class(value: str) -> str:
+    mapping = {
+        "Low": "risk-low",
+        "Medium": "risk-medium",
+        "High": "risk-high",
+        "Critical": "risk-high",
+    }
+
+    return mapping.get(value, "risk-medium")
+
+
+def render_failure_labels(labels: list[str]) -> None:
+    cleaned_labels = [label for label in labels if label and label != "None"]
+
+    if not cleaned_labels:
+        st.markdown(
+            """
+            <div class="metric-card">
+                <div class="metric-label">Failure Labels</div>
+                <div style="font-size:1.1rem; font-weight:800; color:#36F2B2;">
+                    None detected
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    chips_html = "".join(
+        f"""
+        <span style="
+            display:inline-block;
+            padding:0.45rem 0.7rem;
+            margin:0.25rem 0.35rem 0.25rem 0;
+            border-radius:999px;
+            background:rgba(244,184,96,0.10);
+            border:1px solid rgba(244,184,96,0.32);
+            color:#F4B860;
+            font-weight:750;
+            font-size:0.88rem;
+        ">{label}</span>
+        """
+        for label in cleaned_labels
+    )
+
+    st.markdown(
+        f"""
+        <div class="metric-card">
+            <div class="metric-label">Failure Labels</div>
+            <div style="margin-top:0.6rem;">{chips_html}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 def render_single_evaluation_mode() -> None:
     st.markdown('<div class="section-title">Run a new evaluation</div>', unsafe_allow_html=True)
@@ -552,13 +613,10 @@ def render_single_evaluation_mode() -> None:
 
         st.markdown('<div class="section-title">Evaluation result</div>', unsafe_allow_html=True)
 
-        metric_col1, metric_col2, metric_col3 = st.columns(3)
+        metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
 
-        risk_class = {
-            "Low": "risk-low",
-            "Medium": "risk-medium",
-            "High": "risk-high",
-        }.get(result["risk_level"], "risk-medium")
+        risk_class = get_status_class(result.get("risk_level", "Medium"))
+        severity_class = get_status_class(result.get("severity", "Medium"))
 
         with metric_col1:
             st.markdown(
@@ -586,12 +644,27 @@ def render_single_evaluation_mode() -> None:
             st.markdown(
                 f"""
                 <div class="metric-card">
-                    <div class="metric-label">Category</div>
-                    <div style="font-size:1.35rem; font-weight:800; color:{PALETTE["secondary"]};">{result["category"]}</div>
+                    <div class="metric-label">Severity</div>
+                    <div class="{severity_class}" style="font-size:2rem;">{result.get("severity", "N/A")}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
+
+        with metric_col4:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-label">Category</div>
+                    <div style="font-size:1.15rem; font-weight:800; color:{PALETTE["secondary"]};">
+                        {result["category"]}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        render_failure_labels(result.get("failure_labels", ["None"]))
 
         render_score_gauge(result["score"])
 
@@ -631,6 +704,7 @@ def render_single_evaluation_mode() -> None:
 
         with st.expander("Preview report"):
             st.markdown(report)
+
 
 def render_benchmark_mode() -> None:
     st.markdown('<div class="section-title">Benchmark Mode</div>', unsafe_allow_html=True)
@@ -791,6 +865,42 @@ def render_benchmark_mode() -> None:
     st.markdown("### Results table")
     st.dataframe(results_df, use_container_width=True)
 
+    summary_col1, summary_col2 = st.columns(2, gap="large")
+
+    with summary_col1:
+        st.markdown("### Severity Distribution")
+
+        severity_counts = benchmark_result.get("severity_counts", {})
+
+        if severity_counts:
+            severity_df = pd.DataFrame(
+                [
+                    {"Severity": severity, "Count": count}
+                    for severity, count in severity_counts.items()
+                ]
+            )
+
+            st.dataframe(severity_df, use_container_width=True)
+        else:
+            st.info("No severity data available for this benchmark run.")
+
+    with summary_col2:
+        st.markdown("### Failure Label Counts")
+
+        failure_label_counts = benchmark_result.get("failure_label_counts", {})
+
+        if failure_label_counts:
+            failure_df = pd.DataFrame(
+                [
+                    {"Failure Label": label, "Count": count}
+                    for label, count in failure_label_counts.items()
+                ]
+            )
+
+            st.dataframe(failure_df, use_container_width=True)
+        else:
+            st.success("No failure labels detected in this benchmark run.")
+
     report = generate_benchmark_markdown_report(benchmark_result)
     csv_data = results_df.to_csv(index=False)
 
@@ -832,6 +942,7 @@ def render_benchmark_mode() -> None:
     with st.expander("Preview benchmark report"):
         st.markdown(report)
 
+
 def main() -> None:
     st.set_page_config(
         page_title="LLM ShieldBench",
@@ -846,9 +957,11 @@ def main() -> None:
         st.caption("Vedansh Labs · Trustworthy Intelligence")
         st.markdown("---")
         st.markdown("### Test Categories")
+
         for category in CATEGORIES:
             st.markdown(f"**{category}**")
             st.caption(CATEGORY_DESCRIPTIONS[category])
+
         st.markdown("---")
         st.caption("v0.2 Benchmark Preview")
 
@@ -869,7 +982,6 @@ def main() -> None:
         '<p class="footer-note">Built by Vedansh Labs · Building human-centered AI from research to reality.</p>',
         unsafe_allow_html=True,
     )
-
 
 
 if __name__ == "__main__":
