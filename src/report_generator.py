@@ -13,6 +13,44 @@ def list_to_markdown(items: list[str]) -> str:
     return "\n".join(f"- {item}" for item in cleaned_items)
 
 
+
+
+def markdown_table_value(value: Any) -> str:
+    """Keep Markdown tables readable when values contain pipes or newlines."""
+    text = str(value if value is not None else "")
+    text = text.replace("|", "\\|")
+    text = " ".join(text.splitlines())
+    return text.strip()
+
+
+def summarize_history_scores(history: list[Dict[str, Any]]) -> Dict[str, Any]:
+    scores = []
+
+    for item in history:
+        try:
+            scores.append(float(item.get("score", 0)))
+        except (TypeError, ValueError):
+            continue
+
+    risk_counts = {"Low": 0, "Medium": 0, "High": 0, "Critical": 0}
+
+    for item in history:
+        risk_level = str(item.get("risk_level", "")).strip()
+
+        if risk_level in risk_counts:
+            risk_counts[risk_level] += 1
+
+    return {
+        "total_results": len(history),
+        "average_score": round(sum(scores) / len(scores), 1) if scores else 0,
+        "low_risk": risk_counts["Low"],
+        "medium_risk": risk_counts["Medium"],
+        "high_risk": risk_counts["High"],
+        "critical_risk": risk_counts["Critical"],
+        "most_recent": history[-1].get("timestamp", "N/A") if history else "N/A",
+    }
+
+
 def generate_markdown_report(result: Dict[str, Any]) -> str:
     """Generate a Markdown report for a single LLM ShieldBench evaluation."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -207,6 +245,142 @@ Generated: {timestamp}
 {chr(10).join(result_lines)}
 
 {details}
+
+---
+
+Built with **LLM ShieldBench** by **Vedansh Labs**.  
+Building human-centered AI from research to reality.
+"""
+
+
+def generate_history_markdown_report(history: list[Dict[str, Any]]) -> str:
+    """Generate a Markdown export for v0.5 session-based evaluation history."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    summary = summarize_history_scores(history)
+
+    if not history:
+        return f"""# LLM ShieldBench Evaluation History
+
+Generated: {timestamp}
+
+No evaluation history is currently stored in this session.
+
+---
+
+Built with **LLM ShieldBench** by **Vedansh Labs**.  
+Building human-centered AI from research to reality.
+"""
+
+    risk_summary = f"""| Risk Level | Count |
+|---|---|
+| Low | {summary["low_risk"]} |
+| Medium | {summary["medium_risk"]} |
+| High | {summary["high_risk"]} |
+| Critical | {summary["critical_risk"]} |"""
+
+    result_lines = []
+
+    for item in history:
+        labels = ", ".join(item.get("failure_labels", ["None"]))
+
+        result_lines.append(
+            f"| {markdown_table_value(item.get('timestamp', ''))} | "
+            f"{markdown_table_value(item.get('mode', ''))} | "
+            f"{markdown_table_value(item.get('case_id', ''))} | "
+            f"{markdown_table_value(item.get('category', ''))} | "
+            f"{markdown_table_value(item.get('score', 0))} / 100 | "
+            f"{markdown_table_value(item.get('risk_level', ''))} | "
+            f"{markdown_table_value(item.get('severity', ''))} | "
+            f"{markdown_table_value(labels)} |"
+        )
+
+    detailed_sections = []
+
+    for index, item in enumerate(history, start=1):
+        strengths = list_to_markdown(item.get("strengths", []))
+        issues = list_to_markdown(item.get("issues", []))
+        failure_labels = list_to_markdown(item.get("failure_labels", ["None"]))
+
+        case_id = item.get("case_id", "")
+        title = item.get("title", "")
+        mode = item.get("mode", "")
+        category = item.get("category", "")
+
+        if case_id or title:
+            case_label = f"{case_id} — {title}".strip(" —")
+        else:
+            case_label = f"{mode} — {category}".strip(" —") or f"History Item {index}"
+
+        detailed_sections.append(
+            f"""## History Item {index}: {case_label}
+
+**Timestamp:** {item.get("timestamp", "")}  
+**Mode:** {item.get("mode", "")}  
+**Run ID:** {item.get("run_id", "")}  
+**Category:** {item.get("category", "")}  
+**Score:** {item.get("score", 0)} / 100  
+**Risk Level:** {item.get("risk_level", "")}  
+**Severity:** {item.get("severity", "N/A")}
+
+### Failure Labels
+
+{failure_labels}
+
+### Prompt
+
+```text
+{item.get("prompt", "")}
+```
+
+### Chatbot Response
+
+```text
+{item.get("response", "")}
+```
+
+### Expected Safe Behavior
+
+```text
+{item.get("expected_behavior", "")}
+```
+
+### Strengths
+
+{strengths}
+
+### Issues
+
+{issues}
+
+### Recommendation
+
+{item.get("recommendation", "")}
+"""
+        )
+
+    return f"""# LLM ShieldBench Evaluation History
+
+Generated: {timestamp}
+
+## Session Summary
+
+| Field | Value |
+|---|---|
+| Stored Results | {summary["total_results"]} |
+| Average Trust Score | {summary["average_score"]} / 100 |
+| Most Recent Run | {summary["most_recent"]} |
+
+## Risk Summary
+
+{risk_summary}
+
+## History Table
+
+| Timestamp | Mode | Case ID | Category | Score | Risk Level | Severity | Failure Labels |
+|---|---|---|---|---|---|---|---|
+{chr(10).join(result_lines)}
+
+{chr(10).join(detailed_sections)}
 
 ---
 

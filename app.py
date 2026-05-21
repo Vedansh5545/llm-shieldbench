@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import json
+import uuid
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +21,7 @@ from src.categories import CATEGORIES, CATEGORY_DESCRIPTIONS
 from src.evaluator import run_single_evaluation
 from src.report_generator import (
     generate_benchmark_markdown_report,
+    generate_history_markdown_report,
     generate_markdown_report,
 )
 
@@ -57,6 +60,274 @@ SAMPLE_CUSTOM_BENCHMARK = [
         "source": "example",
     },
 ]
+
+
+def initialize_history_state() -> None:
+    """Create session-based history storage for v0.5."""
+    if "evaluation_history" not in st.session_state:
+        st.session_state.evaluation_history = []
+
+
+def get_history_timestamp() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def make_history_run_id(prefix: str) -> str:
+    readable_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+    short_id = uuid.uuid4().hex[:6].upper()
+    return f"{prefix}-{readable_time}-{short_id}"
+
+
+def normalize_history_list(value: object, fallback: str = "None") -> list[str]:
+    if value is None:
+        return [fallback]
+
+    if isinstance(value, list):
+        cleaned = [str(item) for item in value if str(item).strip()]
+        return cleaned or [fallback]
+
+    if isinstance(value, tuple):
+        cleaned = [str(item) for item in value if str(item).strip()]
+        return cleaned or [fallback]
+
+    text = str(value).strip()
+    return [text] if text else [fallback]
+
+
+def format_history_list(value: object) -> str:
+    items = normalize_history_list(value)
+    return ", ".join(items)
+
+
+def add_single_result_to_history(
+    result: dict,
+    prompt: str,
+    response: str,
+    expected_behavior: str,
+) -> None:
+    """Save one Single Evaluation result into Streamlit session history."""
+    initialize_history_state()
+
+    history_item = {
+        "run_id": make_history_run_id("SINGLE"),
+        "timestamp": get_history_timestamp(),
+        "mode": "Single Evaluation",
+        "case_id": "",
+        "title": "",
+        "category": result.get("category", ""),
+        "prompt": prompt,
+        "response": response,
+        "expected_behavior": expected_behavior,
+        "score": result.get("score", 0),
+        "risk_level": result.get("risk_level", "N/A"),
+        "severity": result.get("severity", "N/A"),
+        "failure_labels": normalize_history_list(result.get("failure_labels", ["None"])),
+        "strengths": normalize_history_list(result.get("strengths", []), fallback="None"),
+        "issues": normalize_history_list(result.get("issues", []), fallback="None"),
+        "recommendation": result.get("recommendation", ""),
+    }
+
+    st.session_state.evaluation_history.append(history_item)
+
+
+def add_benchmark_results_to_history(
+    benchmark_result: dict,
+    benchmark_source: str,
+) -> int:
+    """Save Benchmark Mode results into Streamlit session history."""
+    initialize_history_state()
+
+    results = benchmark_result.get("results", [])
+
+    if not results:
+        return 0
+
+    timestamp = get_history_timestamp()
+    run_id = make_history_run_id("BENCHMARK")
+    mode_label = "Custom Benchmark" if benchmark_source == "custom" else "Built-in Benchmark"
+
+    for item in results:
+        history_item = {
+            "run_id": run_id,
+            "timestamp": timestamp,
+            "mode": mode_label,
+            "case_id": item.get("id", ""),
+            "title": item.get("title", ""),
+            "category": item.get("category", ""),
+            "prompt": item.get("prompt", ""),
+            "response": item.get("response", ""),
+            "expected_behavior": item.get("expected_behavior", ""),
+            "score": item.get("score", 0),
+            "risk_level": item.get("risk_level", "N/A"),
+            "severity": item.get("severity", "N/A"),
+            "failure_labels": normalize_history_list(item.get("failure_labels", ["None"])),
+            "strengths": normalize_history_list(item.get("strengths", []), fallback="None"),
+            "issues": normalize_history_list(item.get("issues", []), fallback="None"),
+            "recommendation": item.get("recommendation", ""),
+        }
+
+        st.session_state.evaluation_history.append(history_item)
+
+    return len(results)
+
+
+def history_to_dataframe(history: list[dict]) -> pd.DataFrame:
+    rows = []
+
+    for item in reversed(history):
+        rows.append(
+            {
+                "Timestamp": item.get("timestamp", ""),
+                "Mode": item.get("mode", ""),
+                "Run ID": item.get("run_id", ""),
+                "Case ID": item.get("case_id", ""),
+                "Title": item.get("title", ""),
+                "Category": item.get("category", ""),
+                "Score": item.get("score", 0),
+                "Risk Level": item.get("risk_level", ""),
+                "Severity": item.get("severity", ""),
+                "Failure Labels": format_history_list(item.get("failure_labels", ["None"])),
+                "Prompt": item.get("prompt", ""),
+                "Recommendation": item.get("recommendation", ""),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+def get_history_summary(history: list[dict]) -> dict:
+    scores = []
+
+    for item in history:
+        try:
+            scores.append(float(item.get("score", 0)))
+        except (TypeError, ValueError):
+            continue
+
+    risk_counts = {"Low": 0, "Medium": 0, "High": 0, "Critical": 0}
+
+    for item in history:
+        risk_level = str(item.get("risk_level", "")).strip()
+
+        if risk_level in risk_counts:
+            risk_counts[risk_level] += 1
+
+    return {
+        "total_runs": len(history),
+        "average_score": round(sum(scores) / len(scores), 1) if scores else 0,
+        "low_risk": risk_counts["Low"],
+        "medium_risk": risk_counts["Medium"],
+        "high_risk": risk_counts["High"],
+        "critical_risk": risk_counts["Critical"],
+        "most_recent": history[-1].get("timestamp", "N/A") if history else "N/A",
+    }
+
+
+def render_evaluation_history() -> None:
+    initialize_history_state()
+
+    st.markdown('<div class="section-title">Evaluation History</div>', unsafe_allow_html=True)
+
+    history = st.session_state.evaluation_history
+
+    if not history:
+        st.info("No evaluation history yet. Run a single evaluation or benchmark to see previous results here.")
+        return
+
+    summary = get_history_summary(history)
+
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+
+    with metric_col1:
+        st.markdown(
+            f"""
+            <div class="metric-card">
+                <div class="metric-label">Stored Results</div>
+                <div class="metric-value">{summary["total_runs"]}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with metric_col2:
+        st.markdown(
+            f"""
+            <div class="metric-card">
+                <div class="metric-label">Average Trust Score</div>
+                <div class="metric-value">{summary["average_score"]} / 100</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with metric_col3:
+        high_total = summary["high_risk"] + summary["critical_risk"]
+        st.markdown(
+            f"""
+            <div class="metric-card">
+                <div class="metric-label">High/Critical Risk</div>
+                <div class="risk-high" style="font-size:2rem;">{high_total}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with metric_col4:
+        st.markdown(
+            f"""
+            <div class="metric-card">
+                <div class="metric-label">Most Recent Run</div>
+                <div style="font-size:1rem; font-weight:800; color:{PALETTE["secondary"]};">
+                    {summary["most_recent"]}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    history_df = history_to_dataframe(history)
+
+    st.markdown("### Previous results")
+    st.dataframe(history_df, width="stretch", hide_index=True)
+
+    csv_data = history_df.to_csv(index=False)
+    json_data = json.dumps(history, indent=2, ensure_ascii=False)
+    markdown_data = generate_history_markdown_report(history)
+
+    download_col1, download_col2, download_col3, clear_col = st.columns(4)
+
+    with download_col1:
+        st.download_button(
+            "Download History CSV",
+            data=csv_data,
+            file_name="llm-shieldbench-history.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+
+    with download_col2:
+        st.download_button(
+            "Download History JSON",
+            data=json_data,
+            file_name="llm-shieldbench-history.json",
+            mime="application/json",
+            width="stretch",
+        )
+
+    with download_col3:
+        st.download_button(
+            "Download History Report",
+            data=markdown_data,
+            file_name="llm-shieldbench-history-report.md",
+            mime="text/markdown",
+            width="stretch",
+        )
+
+    with clear_col:
+        if st.button("Clear History", width="stretch"):
+            st.session_state.evaluation_history = []
+            st.success("Evaluation history cleared.")
+            st.rerun()
 
 
 def image_to_base64(path: str) -> str:
@@ -637,6 +908,8 @@ def render_single_evaluation_mode() -> None:
             return
 
         result = run_single_evaluation(category, prompt, response, expected_behavior)
+        add_single_result_to_history(result, prompt, response, expected_behavior)
+        st.success("Saved this evaluation to session history.")
 
         st.markdown('<div class="section-title">Evaluation result</div>', unsafe_allow_html=True)
 
@@ -898,7 +1171,11 @@ def render_benchmark_mode() -> None:
         return
 
     benchmark_result = run_benchmark_from_responses(selected_cases, filled_responses)
+    saved_count = add_benchmark_results_to_history(benchmark_result, benchmark_source)
     results_df = benchmark_to_dataframe(benchmark_result)
+
+    if saved_count:
+        st.success(f"Saved {saved_count} benchmark result(s) to session history.")
 
     st.markdown('<div class="section-title">Benchmark results</div>', unsafe_allow_html=True)
 
@@ -1061,6 +1338,7 @@ def main() -> None:
         layout="wide",
     )
 
+    initialize_history_state()
     apply_brand_styles()
 
     with st.sidebar:
@@ -1088,6 +1366,8 @@ def main() -> None:
         render_single_evaluation_mode()
     else:
         render_benchmark_mode()
+
+    render_evaluation_history()
 
     st.markdown(
         '<p class="footer-note">Built by Vedansh Labs · Building human-centered AI from research to reality.</p>',
