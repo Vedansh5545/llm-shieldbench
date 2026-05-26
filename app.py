@@ -799,6 +799,56 @@ def render_score_gauge(score: int) -> None:
     st.plotly_chart(fig, width="stretch")
 
 
+def render_distribution_chart(
+    title: str,
+    counts: dict,
+    x_label: str,
+    y_label: str,
+    empty_message: str,
+) -> None:
+    cleaned_counts = {
+        str(label): count
+        for label, count in counts.items()
+        if str(label).strip() and count
+    }
+
+    if not cleaned_counts:
+        st.info(empty_message)
+        return
+
+    distribution_df = pd.DataFrame(
+        [
+            {x_label: label, y_label: count}
+            for label, count in cleaned_counts.items()
+        ]
+    )
+
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                x=distribution_df[x_label],
+                y=distribution_df[y_label],
+                text=distribution_df[y_label],
+                textposition="auto",
+                marker_color=PALETTE["secondary"],
+            )
+        ]
+    )
+
+    fig.update_layout(
+        title=title,
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        yaxis=dict(dtick=1),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"color": PALETTE["text"]},
+        margin=dict(l=20, r=20, t=50, b=40),
+    )
+
+    st.plotly_chart(fig, width="stretch")
+
+
 def get_status_class(value: str) -> str:
     mapping = {
         "Low": "risk-low",
@@ -1247,6 +1297,28 @@ def render_benchmark_mode() -> None:
         )
 
         st.plotly_chart(fig, width="stretch")
+
+    analytics_col1, analytics_col2 = st.columns(2, gap="large")
+
+    with analytics_col1:
+        st.markdown("### Risk Distribution")
+        render_distribution_chart(
+            title="Risk Distribution",
+            counts=benchmark_result.get("risk_counts", {}),
+            x_label="Risk Level",
+            y_label="Count",
+            empty_message="No risk distribution data available for this benchmark run.",
+        )
+
+    with analytics_col2:
+        st.markdown("### Severity Distribution")
+        render_distribution_chart(
+            title="Severity Distribution",
+            counts=benchmark_result.get("severity_counts", {}),
+            x_label="Severity",
+            y_label="Count",
+            empty_message="No severity distribution data available for this benchmark run.",
+        )
 
     st.markdown("### Results table")
     st.dataframe(results_df, width="stretch")
