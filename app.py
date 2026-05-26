@@ -801,11 +801,16 @@ def render_score_gauge(score: int) -> None:
 
 def render_distribution_chart(
     title: str,
-    counts: dict,
+    counts: dict | None,
     x_label: str,
     y_label: str,
     empty_message: str,
+    order: list[str] | None = None,
 ) -> None:
+    if not isinstance(counts, dict):
+        st.info(empty_message)
+        return
+
     cleaned_counts = {
         str(label): count
         for label, count in counts.items()
@@ -816,10 +821,22 @@ def render_distribution_chart(
         st.info(empty_message)
         return
 
+    ordered_labels = [
+        label
+        for label in (order or [])
+        if label in cleaned_counts
+    ]
+    remaining_labels = [
+        label
+        for label in cleaned_counts
+        if label not in ordered_labels
+    ]
+    chart_labels = ordered_labels + remaining_labels
+
     distribution_df = pd.DataFrame(
         [
-            {x_label: label, y_label: count}
-            for label, count in cleaned_counts.items()
+            {x_label: label, y_label: cleaned_counts[label]}
+            for label in chart_labels
         ]
     )
 
@@ -1308,6 +1325,7 @@ def render_benchmark_mode() -> None:
             x_label="Risk Level",
             y_label="Count",
             empty_message="No risk distribution data available for this benchmark run.",
+            order=["Low", "Medium", "High", "Critical"],
         )
 
     with analytics_col2:
@@ -1318,6 +1336,7 @@ def render_benchmark_mode() -> None:
             x_label="Severity",
             y_label="Count",
             empty_message="No severity distribution data available for this benchmark run.",
+            order=["Low", "Medium", "High", "Critical"],
         )
 
     st.markdown("### Results table")
@@ -1326,7 +1345,7 @@ def render_benchmark_mode() -> None:
     summary_col1, summary_col2 = st.columns(2, gap="large")
 
     with summary_col1:
-        st.markdown("### Severity Distribution")
+        st.markdown("### Severity Counts Table")
 
         severity_counts = benchmark_result.get("severity_counts", {})
 
@@ -1424,7 +1443,7 @@ def main() -> None:
             st.caption(CATEGORY_DESCRIPTIONS[category])
 
         st.markdown("---")
-        st.caption("v0.4 Custom Benchmark Upload")
+        st.caption("v0.6 Benchmark Analytics")
 
     render_hero()
 
