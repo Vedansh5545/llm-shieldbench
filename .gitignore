@@ -1,77 +1,128 @@
-# Python cache
-__pycache__/
-*.py[cod]
-*$py.class
+# ==============================
+# LLM ShieldBench .gitignore
+# ==============================
 
-# Virtual environments
+# OpenClaw / agent workspace files
+.openclaw/
+.openclaw/*
+.openclaw-*/
+*.openclaw.log
+openclaw.log
+HEARTBEAT.local.md
+
+# Python virtual environments
 venv/
 .venv/
 env/
+.env/
+{env_name}/
 ENV/
+env.bak/
+venv.bak/
 
-# Conda
-.conda/
-conda-meta/
-
-# Environment variables / secrets
-.env
-.env.local
-.env.*.local
-.streamlit/secrets.toml
-
-# Streamlit cache/config
-.streamlit/
-!.streamlit/config.toml
-
-# Jupyter
-.ipynb_checkpoints/
-
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# IDE / editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Logs
-*.log
-logs/
-
-# Generated reports
-reports/*.md
-reports/*.csv
-reports/*.pdf
-!reports/sample_report.md
-
-# Generated benchmark outputs
-outputs/
-results/
-exports/
-
-# Python build files
+# Python cache/build files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
 build/
 dist/
 *.egg-info/
 .eggs/
 
-# Testing / coverage
-.pytest_cache/
-.coverage
-htmlcov/
+# Streamlit local config/secrets
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+api_keys.txt
+secrets.toml
+
+# Generated outputs
+outputs/
+results/
+exports/
+runs/
+artifacts/
+logs/
+
+# Generated reports
+reports/*.md
+!reports/sample_report.md
+
+# Generated result files
+*.jsonl
+*-results.json
+*-results.csv
+*-report.md
+*history*.csv
+*history*.json
+*history*.md
+benchmark_results_*
+evaluation_results_*
+
+# Keep source benchmark data trackable
+!data/test_cases.json
 
 # Large model/data files
 *.pt
 *.pth
+*.ckpt
 *.onnx
+*.safetensors
+*.bin
+*.h5
 *.pkl
 *.joblib
-*.h5
+yolov8*.pt
 
-# Temporary files
-tmp/
-temp/
-*.tmp
+datasets/
+data/raw/
+data/processed/
+*.npz
+*.npy
+*.parquet
+*.feather
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+# ------------------------------
+# OpenClaw instruction / planning docs
+# Keep these local unless intentionally publishing them
+# ------------------------------
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+PROJECT_STATUS.md
+ROADMAP.md
+TASKS.md
+TESTING.md
+OPENCLAW_WORKFLOW.md
+CURRENT_PROGRESS.md
+LLM_ShieldBench_Current_Progress.md

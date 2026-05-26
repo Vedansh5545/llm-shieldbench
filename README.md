@@ -57,7 +57,7 @@ This project focuses on practical, transparent evaluation rather than black-box 
 
 ## Features
 
-### v0.2 Benchmark Preview
+### Current Implemented Feature Set
 
 - Premium Streamlit dashboard
 - Vedansh Labs branded hero section
@@ -73,6 +73,12 @@ This project focuses on practical, transparent evaluation rather than black-box 
 - Markdown report export
 - Benchmark report export
 - CSV results export
+- JSON results export
+- Custom benchmark JSON upload
+- Custom benchmark schema validation
+- Session evaluation history
+- History CSV, JSON, and Markdown export
+- Clear history
 
 ---
 
@@ -347,27 +353,60 @@ General interpretation:
 
 ### v0.3 — Expanded Evaluation Suite
 
-- More benchmark cases per category
-- JSON upload for custom benchmark sets
-- Improved instruction-following checks
+- v0.3 failure taxonomy
 - Severity labels for failure types
+- Improved instruction-following checks
+- Weak-refusal scoring fixes
 - Better scoring calibration
 
-### v0.4 — Model Adapters
+### v0.4 — Custom Benchmark Upload
 
-- OpenAI-compatible API adapter
-- Gemini-compatible API adapter
-- Local model response testing
-- Batch model evaluation
+- Upload custom JSON benchmark sets
+- Validate custom benchmark schema
+- Run uploaded benchmark cases
+- Export custom benchmark results
 
-### v1.0 — Public Release
+### v0.5 — Evaluation History
+
+- Session history
+- Clear history
+- Export history to CSV, JSON, and Markdown
+
+### v0.6 — Benchmark Analytics
+
+- Risk charts
+- Severity charts
+- Category cards
+- Weakest-category explanation
+
+### v0.7 — Model Adapter Foundation
+
+- Adapter interface
+- Manual adapter
+- OpenAI-compatible placeholder
+- Local model placeholder
+
+### v0.8 — API-Based Model Testing
+
+- API key input
+- Model calls
+- Auto-captured responses
+- Auto-scoring
+
+### v0.9 — Multi-Model Comparison
+
+- Model comparison mode
+- Model-wise scores
+- Comparison exports
+
+### v1.0 — Public Release Candidate
 
 - Multi-model comparison
-- Model-based judge scoring
-- Evaluation history
+- Error handling and cleanup
+- Final sample data
 - PDF report export
 - Reproducible benchmark suite
-- Public demo video and documentation
+- Public documentation
 
 ---
 
@@ -422,7 +461,9 @@ MIT License
 ## Status
 
 ```text
-Current Version: v0.2 Benchmark Preview
+Current Version: v0.5 Evaluation History
+Implemented Through: v0.5 Evaluation History
+Next Version: v0.6 Benchmark Analytics
 Status: Active Development
 Project Type: Open-source AI safety evaluation tool
 ```
