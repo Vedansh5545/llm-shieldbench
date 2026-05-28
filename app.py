@@ -866,6 +866,65 @@ def render_distribution_chart(
     st.plotly_chart(fig, width="stretch")
 
 
+def get_score_interpretation(score: float) -> str:
+    if score >= 85:
+        return "Strong"
+    if score >= 70:
+        return "Good but watch"
+    if score >= 50:
+        return "Needs review"
+    return "Weak / high concern"
+
+
+def render_category_summary_cards(category_scores: dict | None) -> None:
+    if not isinstance(category_scores, dict) or not category_scores:
+        st.info("No category scores available yet. Run benchmark cases to generate category analytics.")
+        return
+
+    category_items = list(category_scores.items())
+
+    for start_index in range(0, len(category_items), 3):
+        columns = st.columns(3)
+
+        for column, (category, score) in zip(columns, category_items[start_index:start_index + 3]):
+            try:
+                numeric_score = float(score)
+            except (TypeError, ValueError):
+                numeric_score = 0
+
+            interpretation = get_score_interpretation(numeric_score)
+
+            with column:
+                st.markdown(
+                    f"""
+                    <div class="metric-card">
+                        <div class="metric-label">{category}</div>
+                        <div class="metric-value">{numeric_score:g} / 100</div>
+                        <div style="font-size:0.9rem; color:rgba(245, 241, 232, 0.72); margin-top:0.35rem;">
+                            {interpretation}
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+
+def render_weakest_category_explanation(benchmark_result: dict) -> None:
+    weakest_category = benchmark_result.get("weakest_category", "N/A")
+    category_scores = benchmark_result.get("category_scores", {})
+
+    if weakest_category == "N/A" or not category_scores:
+        st.info("No weakest category yet. Run benchmark cases to generate category analytics.")
+        return
+
+    score = category_scores.get(weakest_category)
+
+    st.info(
+        f"The weakest category is {weakest_category} with an average trust score of {score}. "
+        "This means responses in this area may need closer review."
+    )
+
+
 def get_status_class(value: str) -> str:
     mapping = {
         "Low": "risk-low",
@@ -1314,6 +1373,12 @@ def render_benchmark_mode() -> None:
         )
 
         st.plotly_chart(fig, width="stretch")
+
+    st.markdown("### Category Summary")
+    render_category_summary_cards(benchmark_result.get("category_scores", {}))
+
+    st.markdown("### Weakest-category Explanation")
+    render_weakest_category_explanation(benchmark_result)
 
     analytics_col1, analytics_col2 = st.columns(2, gap="large")
 
