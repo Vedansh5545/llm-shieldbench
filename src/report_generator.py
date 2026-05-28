@@ -23,6 +23,38 @@ def markdown_table_value(value: Any) -> str:
     return text.strip()
 
 
+def score_interpretation(score: Any) -> str:
+    try:
+        numeric_score = float(score)
+    except (TypeError, ValueError):
+        numeric_score = 0
+
+    if numeric_score >= 85:
+        return "Strong"
+    if numeric_score >= 70:
+        return "Good but watch"
+    if numeric_score >= 50:
+        return "Needs review"
+    return "Weak / high concern"
+
+
+def distribution_table_lines(
+    counts: Dict[str, Any],
+    ordered_labels: list[str],
+    empty_label: str = "N/A",
+) -> list[str]:
+    if not counts:
+        return [f"| {empty_label} | 0 |"]
+
+    labels = [label for label in ordered_labels if label in counts]
+    labels.extend(label for label in counts if label not in labels)
+
+    return [
+        f"| {markdown_table_value(label)} | {markdown_table_value(counts.get(label, 0))} |"
+        for label in labels
+    ]
+
+
 def summarize_history_scores(history: list[Dict[str, Any]]) -> Dict[str, Any]:
     scores = []
 
@@ -120,15 +152,25 @@ def generate_benchmark_markdown_report(benchmark_result: Dict[str, Any]) -> str:
     category_lines = []
 
     for category, score in benchmark_result.get("category_scores", {}).items():
-        category_lines.append(f"| {category} | {score} / 100 |")
+        category_lines.append(
+            f"| {markdown_table_value(category)} | {markdown_table_value(score)} / 100 | "
+            f"{markdown_table_value(score_interpretation(score))} |"
+        )
 
     if not category_lines:
-        category_lines.append("| N/A | N/A |")
+        category_lines.append("| N/A | N/A | N/A |")
+
+    risk_lines = distribution_table_lines(
+        benchmark_result.get("risk_counts", {}),
+        ["Low", "Medium", "High", "Critical"],
+    )
 
     severity_lines = []
 
     for severity, count in benchmark_result.get("severity_counts", {}).items():
-        severity_lines.append(f"| {severity} | {count} |")
+        severity_lines.append(
+            f"| {markdown_table_value(severity)} | {markdown_table_value(count)} |"
+        )
 
     if not severity_lines:
         severity_lines.append("| N/A | N/A |")
@@ -136,10 +178,27 @@ def generate_benchmark_markdown_report(benchmark_result: Dict[str, Any]) -> str:
     failure_label_lines = []
 
     for label, count in benchmark_result.get("failure_label_counts", {}).items():
-        failure_label_lines.append(f"| {label} | {count} |")
+        failure_label_lines.append(
+            f"| {markdown_table_value(label)} | {markdown_table_value(count)} |"
+        )
 
     if not failure_label_lines:
         failure_label_lines.append("| None | 0 |")
+
+    weakest_category = benchmark_result.get("weakest_category", "N/A")
+    category_scores = benchmark_result.get("category_scores", {})
+    weakest_score = category_scores.get(weakest_category)
+
+    if weakest_category == "N/A" or weakest_score is None:
+        weakest_explanation = (
+            "No weakest category is available yet. Run benchmark cases to generate "
+            "category analytics."
+        )
+    else:
+        weakest_explanation = (
+            f"The weakest category is {weakest_category} with an average trust score "
+            f"of {weakest_score}. This means responses in this area may need closer review."
+        )
 
     result_lines = []
 
@@ -147,9 +206,12 @@ def generate_benchmark_markdown_report(benchmark_result: Dict[str, Any]) -> str:
         labels = ", ".join(item.get("failure_labels", ["None"]))
 
         result_lines.append(
-            f"| {item.get('id', '')} | {item.get('category', '')} | "
-            f"{item.get('score', '')} / 100 | {item.get('risk_level', '')} | "
-            f"{item.get('severity', 'N/A')} | {labels} |"
+            f"| {markdown_table_value(item.get('id', ''))} | "
+            f"{markdown_table_value(item.get('category', ''))} | "
+            f"{markdown_table_value(item.get('score', ''))} / 100 | "
+            f"{markdown_table_value(item.get('risk_level', ''))} | "
+            f"{markdown_table_value(item.get('severity', 'N/A'))} | "
+            f"{markdown_table_value(labels)} |"
         )
 
     if not result_lines:
@@ -218,13 +280,32 @@ Generated: {timestamp}
 |---|---|
 | Overall Trust Score | {benchmark_result.get("overall_score", 0)} / 100 |
 | Completed Test Cases | {benchmark_result.get("completed_cases", 0)} |
-| Weakest Category | {benchmark_result.get("weakest_category", "N/A")} |
+| Weakest Category | {markdown_table_value(weakest_category)} |
 
-## Category Scores
+## Score Interpretation
 
-| Category | Average Score |
+| Score Range | Meaning |
 |---|---|
+| 85-100 | Strong |
+| 70-84 | Good but watch |
+| 50-69 | Needs review |
+| Below 50 | Weak / high concern |
+
+## Category Summary
+
+| Category | Average Score | Interpretation |
+|---|---|---|
 {chr(10).join(category_lines)}
+
+## Weakest-category Explanation
+
+{weakest_explanation}
+
+## Risk Distribution
+
+| Risk Level | Count |
+|---|---|
+{chr(10).join(risk_lines)}
 
 ## Severity Distribution
 
