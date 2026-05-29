@@ -79,6 +79,9 @@ This project focuses on practical, transparent evaluation rather than black-box 
 - Session evaluation history
 - History CSV, JSON, and Markdown export
 - Clear history
+- v0.8 optional one-prompt OpenAI-compatible API connection test
+
+Manual Paste remains the default benchmark workflow. Full benchmark API execution is not enabled yet.
 
 ---
 
@@ -126,6 +129,22 @@ CSV Export
 ```
 
 This makes LLM ShieldBench more than a single-response checker. It becomes a lightweight evaluation framework.
+
+---
+
+### 3. v0.8 API Connection Test
+
+v0.8 adds an optional one-prompt OpenAI-compatible API connection test inside Benchmark Mode.
+
+This test:
+
+- Runs only when the user clicks the test button
+- Sends one prompt only
+- Does not run the full benchmark through an API
+- Keeps Manual Paste as the default benchmark workflow
+- Uses a password input for the API key in Streamlit
+
+Do not hardcode API keys, paste real keys into files, or commit secrets. Future configuration can use environment variables or Streamlit secrets, but `.env` files and secret values should stay out of git.
 
 ---
 
@@ -193,10 +212,15 @@ llm-shieldbench/
 ├── reports/
 │   └── sample_report.md
 │
+├── scripts/
+│   ├── v07_adapter_smoke_test.py
+│   └── v08_adapter_smoke_test.py
+│
 └── src/
     ├── benchmark.py
     ├── categories.py
     ├── evaluator.py
+    ├── model_adapters.py
     ├── report_generator.py
     └── scoring.py
 ```
@@ -241,7 +265,9 @@ pip install -r requirements.txt
 ## Run the App
 
 ```bash
-streamlit run app.py
+cd /Users/vedanshtembhre/llm-shieldbench
+source .venv/bin/activate
+python -m streamlit run app.py
 ```
 
 Then open the local URL shown in the terminal.
@@ -251,6 +277,29 @@ Usually:
 ```text
 http://localhost:8501
 ```
+
+---
+
+## Test Commands
+
+```bash
+python3 scripts/v08_adapter_smoke_test.py
+python3 scripts/v07_adapter_smoke_test.py
+python3 -m py_compile app.py src/benchmark.py src/model_adapters.py src/scoring.py src/report_generator.py
+```
+
+The adapter smoke tests are mock-only. They do not require real API keys and do not make real network calls.
+
+---
+
+## API Safety Notes
+
+- Manual Paste remains the default and safest benchmark workflow.
+- The v0.8 API connection test is optional and runs only after an explicit button click.
+- Full benchmark API execution is not enabled yet.
+- Do not commit `.env`, Streamlit secrets, API keys, generated exports, caches, `.venv`, or `.openclaw`.
+- Do not paste real API keys into source files, docs, screenshots, issues, or reports.
+- Do not share screenshots that reveal API keys or private endpoint credentials.
 
 ---
 
@@ -382,16 +431,19 @@ General interpretation:
 ### v0.7 — Model Adapter Foundation
 
 - Adapter interface
-- Manual adapter
-- OpenAI-compatible placeholder
-- Local model placeholder
+- Manual Paste adapter as the default workflow
+- Disabled adapter placeholder
+- Mock adapter for deterministic tests
+- Provider-neutral benchmark helper
 
 ### v0.8 — API-Based Model Testing
 
-- API key input
-- Model calls
-- Auto-captured responses
-- Auto-scoring
+- Optional one-prompt OpenAI-compatible API connection test
+- API key entry through Streamlit password input
+- Standard-library request path
+- Mock-only automated tests
+- Manual Paste remains the default benchmark workflow
+- Full benchmark API execution is not enabled yet
 
 ### v0.9 — Multi-Model Comparison
 
@@ -461,9 +513,9 @@ MIT License
 ## Status
 
 ```text
-Current Version: v0.5 Evaluation History
-Implemented Through: v0.5 Evaluation History
-Next Version: v0.6 Benchmark Analytics
+Current Version: v0.8 API-Based Model Testing
+Implemented Through: v0.8 optional one-prompt API connection test
+Next Version: v0.8 full benchmark API execution planning
 Status: Active Development
 Project Type: Open-source AI safety evaluation tool
 ```
