@@ -79,10 +79,10 @@ This project focuses on practical, transparent evaluation rather than black-box 
 - Session evaluation history
 - History CSV, JSON, and Markdown export
 - Clear history
-- v0.8 optional one-prompt OpenAI-compatible API connection test
-- v0.9 optional selected-case API benchmark execution
+- Optional one-prompt OpenAI-compatible API connection test
+- Optional selected-case API benchmark execution
 
-Manual Paste remains the default benchmark workflow. Optional selected-case API benchmark execution is available in v0.9 behind explicit confirmation.
+Manual Paste remains the default benchmark workflow. v1.0 is focused on public release packaging and polish; v0.9 API Benchmark Execution is implemented and remains optional behind explicit confirmation.
 
 ---
 
@@ -111,6 +111,14 @@ Recommendation
 Downloadable Markdown Report
 ```
 
+How to use it:
+
+1. Select **Single Evaluation**.
+2. Choose the evaluation category.
+3. Paste the original prompt, chatbot response, and expected safe behavior.
+4. Run the evaluation.
+5. Review the trust score, strengths, issues, recommendation, and downloadable report.
+
 ---
 
 ### 2. Benchmark Mode
@@ -131,11 +139,64 @@ CSV Export
 
 This makes LLM ShieldBench more than a single-response checker. It becomes a lightweight evaluation framework.
 
+How to use it:
+
+1. Select **Benchmark Mode**.
+2. Choose the built-in benchmark suite or upload a custom benchmark JSON file.
+3. Select the categories you want to run.
+4. Keep **Manual Paste** selected for the default workflow.
+5. Paste chatbot responses for the selected cases.
+6. Run the benchmark and review score summaries, analytics, exports, and history.
+
 ---
 
-### 3. v0.8 API Connection Test
+### 3. Custom Benchmark Upload
 
-v0.8 added an optional one-prompt OpenAI-compatible API connection test inside Benchmark Mode.
+Custom benchmark upload lets you evaluate your own prompt sets without changing source code.
+
+How to use it:
+
+1. In **Benchmark Mode**, choose the custom benchmark option.
+2. Upload a JSON file containing a list of test case objects.
+3. Make sure each case includes `id`, `title`, `category`, `prompt`, and `expected_safe_behavior`.
+4. Review validation warnings or errors before running.
+5. Paste responses manually or use the optional selected-case API benchmark path.
+
+---
+
+### 4. Evaluation History
+
+Evaluation History stores results for the current Streamlit session.
+
+How to use it:
+
+1. Run a Single Evaluation or Benchmark Mode evaluation.
+2. Scroll to **Evaluation History**.
+3. Review previous results, scores, risk levels, and recommendations.
+4. Export history as CSV, JSON, or Markdown when needed.
+5. Clear history when you want to reset the current session.
+
+---
+
+### 5. Analytics
+
+Benchmark analytics help identify the weakest areas of an assistant.
+
+What to review:
+
+- Overall trust score
+- Completed test cases
+- Weakest category
+- Category-wise scores
+- Risk distribution
+- Severity distribution
+- Failure label counts
+
+---
+
+### 6. Optional API Connection Test
+
+The optional one-prompt OpenAI-compatible API connection test lives inside Benchmark Mode.
 
 This test:
 
@@ -149,9 +210,9 @@ Do not hardcode API keys, paste real keys into files, or commit secrets. Future 
 
 ---
 
-### 4. v0.9 API Benchmark Execution
+### 7. Optional API Benchmark Execution
 
-v0.9 adds optional selected-case API benchmark execution through the OpenAI-compatible adapter path.
+v0.9 added optional selected-case API benchmark execution through the OpenAI-compatible adapter path.
 
 This workflow:
 
@@ -163,6 +224,13 @@ This workflow:
 - Is not multi-model comparison
 
 API keys are entered through Streamlit password inputs and must never be committed, hardcoded, or shared in screenshots.
+
+What is not supported yet:
+
+- Multi-model comparison
+- Provider-specific SDK integrations
+- Automatic all-model benchmark runs
+- A guarantee of complete model safety
 
 ---
 
@@ -218,6 +286,10 @@ llm-shieldbench/
 │
 ├── app.py
 ├── README.md
+├── LICENSE
+├── SECURITY.md
+├── CONTRIBUTING.md
+├── CHANGELOG.md
 ├── requirements.txt
 ├── .gitignore
 │
@@ -232,7 +304,8 @@ llm-shieldbench/
 │
 ├── scripts/
 │   ├── v07_adapter_smoke_test.py
-│   └── v08_adapter_smoke_test.py
+│   ├── v08_adapter_smoke_test.py
+│   └── v09_api_benchmark_smoke_test.py
 │
 └── src/
     ├── benchmark.py
@@ -475,20 +548,22 @@ General interpretation:
 - Manual Paste remains the default benchmark workflow
 - Not multi-model comparison
 
-### v1.0+ — Multi-Model Comparison
-
-- Model comparison mode
-- Model-wise scores
-- Comparison exports
-
 ### v1.0 — Public Release Candidate
 
+- Public release documentation foundation
+- MIT license
+- Security and responsible disclosure guidance
+- Contributor setup and test commands
+- Changelog through v1.0
+- Release candidate positioning without new benchmark behavior
+
+### v1.1+ — Future Work
+
 - Multi-model comparison
-- Error handling and cleanup
-- Final sample data
-- PDF report export
-- Reproducible benchmark suite
-- Public documentation
+- Model-wise scores
+- Comparison exports
+- Additional provider integrations only after explicit design review
+- Optional richer report formats
 
 ---
 
@@ -530,22 +605,17 @@ This project is part of the **Trustworthy Intelligence** pillar of Vedansh Labs.
 
 ## License
 
-This project is intended to be released as open source.
-
-Add a license before public launch. Recommended:
-
-```text
-MIT License
-```
+This project is released under the MIT License. See `LICENSE`.
 
 ---
 
 ## Status
 
 ```text
-Current Version: v0.9 API Benchmark Execution
+Current Version: v1.0 Public Release Candidate
 Implemented Through: v0.9 optional selected-case API benchmark execution
-Next Version: v1.0+ Multi-Model Comparison planning
+Current Focus: Public release documentation, safety guidance, and packaging polish
+Future Work: v1.1+ Multi-Model Comparison planning
 Status: Active Development
 Project Type: Open-source AI safety evaluation tool
 ```
