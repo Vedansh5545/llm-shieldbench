@@ -221,9 +221,34 @@ class OpenAICompatibleAdapter(ModelAdapter):
     name = "OpenAI-Compatible Adapter"
     enabled = False
 
-    def __init__(self, config: OpenAICompatibleConfig, request_fn=None) -> None:
+    def __init__(
+        self,
+        config: OpenAICompatibleConfig,
+        request_fn=None,
+        enabled_for_runtime: bool = False,
+    ) -> None:
         self.config = config.validate()
         self.request_fn = request_fn
+        self.enabled = enabled_for_runtime
+
+    @classmethod
+    def for_runtime(cls, config: OpenAICompatibleConfig, request_fn) -> "OpenAICompatibleAdapter":
+        """Create an explicitly enabled runtime adapter.
+
+        This path is intended for user-confirmed execution. The default adapter
+        remains disabled, and runtime use still requires an injected request
+        function.
+        """
+        if request_fn is None:
+            raise ModelAdapterError(
+                "OpenAI-compatible runtime adapter requires an injected request function."
+            )
+
+        return cls(
+            config=config.validate(),
+            request_fn=request_fn,
+            enabled_for_runtime=True,
+        )
 
     def generate_response(self, prompt: str, *, case: dict | None = None) -> str:
         """Generate a response only through an injected fake request function."""
