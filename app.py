@@ -16,6 +16,7 @@ from src.benchmark import (
     load_benchmark_cases,
     load_custom_benchmark_cases,
     run_benchmark_from_responses,
+    run_benchmark_with_adapter,
 )
 from src.categories import CATEGORIES, CATEGORY_DESCRIPTIONS
 from src.evaluator import run_single_evaluation
@@ -1223,9 +1224,8 @@ def get_benchmark_cases_from_ui() -> tuple[list[dict], str] | tuple[None, None]:
 def render_optional_api_connection_test() -> None:
     st.markdown("### Optional v0.8 API Connection Test")
     st.caption(
-        "API testing is optional. Manual Paste remains the default benchmark workflow. "
-        "Full benchmark API execution is not enabled yet, and this call only runs "
-        "when you click the test button."
+        "This one-prompt test is optional and only runs when you click the test button. "
+        "For batch testing, use the separate v0.9 API benchmark section below with confirmation."
     )
 
     with st.form("v08_api_connection_test_form"):
@@ -1318,6 +1318,120 @@ def render_optional_api_connection_test() -> None:
     )
 
 
+def render_optional_api_benchmark_execution(selected_cases: list[dict]) -> dict | None:
+    with st.expander("Optional v0.9 API Benchmark Execution", expanded=False):
+        st.warning(
+            "This optional path sends the currently selected benchmark prompts to "
+            "your configured API provider and may incur API costs. Manual Paste "
+            "remains the default and safest workflow. This is not multi-model comparison."
+        )
+        st.markdown(f"**Selected cases to send:** {len(selected_cases)}")
+
+        with st.form("v09_api_benchmark_execution_form"):
+            api_base_url = st.text_input(
+                "Base URL",
+                value="",
+                placeholder="https://your-api-host.example/v1/chat/completions",
+                key="v09_api_benchmark_base_url",
+            )
+            api_model = st.text_input(
+                "Model name",
+                value="",
+                placeholder="your-model-name",
+                key="v09_api_benchmark_model",
+            )
+            api_key = st.text_input(
+                "API key",
+                value="",
+                type="password",
+                placeholder="Paste only when you are ready to run the selected benchmark",
+                key="v09_api_benchmark_api_key",
+            )
+
+            settings_col1, settings_col2, settings_col3 = st.columns(3)
+
+            with settings_col1:
+                temperature = st.number_input(
+                    "Temperature",
+                    min_value=0.0,
+                    max_value=2.0,
+                    value=0.0,
+                    step=0.1,
+                    key="v09_api_benchmark_temperature",
+                )
+
+            with settings_col2:
+                max_tokens = st.number_input(
+                    "Max tokens",
+                    min_value=1,
+                    max_value=4096,
+                    value=128,
+                    step=1,
+                    key="v09_api_benchmark_max_tokens",
+                )
+
+            with settings_col3:
+                timeout_seconds = st.number_input(
+                    "Timeout seconds",
+                    min_value=1.0,
+                    max_value=120.0,
+                    value=30.0,
+                    step=1.0,
+                    key="v09_api_benchmark_timeout_seconds",
+                )
+
+            confirmed = st.checkbox(
+                "I understand this will send the selected benchmark prompts to "
+                "my configured API provider and may incur API costs.",
+                key="v09_api_benchmark_confirmation",
+            )
+            submitted = st.form_submit_button(
+                "Run selected benchmark with API",
+                width="stretch",
+            )
+
+        if not submitted:
+            return None
+
+        api_key_for_request = api_key
+        st.session_state.pop("v09_api_benchmark_api_key", None)
+
+        if not selected_cases:
+            st.error("Select at least one benchmark case before running API benchmark execution.")
+            return None
+
+        if not confirmed:
+            st.error("Confirm that you understand the API benchmark execution cost and data-sharing warning.")
+            return None
+
+        try:
+            config = OpenAICompatibleConfig(
+                api_key=api_key_for_request,
+                base_url=api_base_url,
+                model=api_model,
+                timeout_seconds=float(timeout_seconds),
+                max_tokens=int(max_tokens),
+                temperature=float(temperature),
+            ).validate()
+
+            adapter = OpenAICompatibleAdapter.for_runtime(
+                config=config,
+                request_fn=lambda payload, headers: openai_compatible_http_request(
+                    payload,
+                    headers,
+                    config,
+                ),
+            )
+            benchmark_result = run_benchmark_with_adapter(selected_cases, adapter)
+
+        except ModelAdapterError as exc:
+            st.error(str(exc))
+            return None
+
+        st.success("Selected benchmark cases completed through the configured API provider.")
+        return benchmark_result
+
+
 def render_benchmark_mode() -> None:
     st.markdown('<div class="section-title">Benchmark Mode</div>', unsafe_allow_html=True)
 
@@ -1376,9 +1490,8 @@ def render_benchmark_mode() -> None:
     )
 
     st.info(
-        "Manual Paste remains the default and safest benchmark workflow. v0.8 "
-        "adds an optional one-prompt API connection test below, but full "
-        "benchmark API execution is not enabled yet."
+        "Manual Paste remains the default and safest benchmark workflow. v0.9 "
+        "adds optional selected-case API benchmark execution behind explicit confirmation."
     )
 
     with st.expander("Adapter foundation status", expanded=False):
@@ -1390,6 +1503,12 @@ def render_benchmark_mode() -> None:
             else:
                 status_parts.append("unavailable placeholder")
 
+            if option.get("id") == "openai_compatible":
+                status_parts = [
+                    "optional runtime path",
+                    "requires explicit configuration",
+                ]
+
             if option.get("default"):
                 status_parts.append("default")
 
@@ -1399,6 +1518,8 @@ def render_benchmark_mode() -> None:
             st.markdown(f'- **{option["name"]}:** {", ".join(status_parts)}')
 
     render_optional_api_connection_test()
+
+    api_benchmark_result = render_optional_api_benchmark_execution(selected_cases)
 
     st.markdown("### Paste chatbot responses")
 
@@ -1422,20 +1543,24 @@ def render_benchmark_mode() -> None:
 
         submitted = st.form_submit_button("Run Full Benchmark", width="stretch")
 
-    if not submitted:
+    if api_benchmark_result is None and not submitted:
         return
 
-    filled_responses = {
-        case_id: response
-        for case_id, response in responses_by_id.items()
-        if response.strip()
-    }
+    if api_benchmark_result is None:
+        filled_responses = {
+            case_id: response
+            for case_id, response in responses_by_id.items()
+            if response.strip()
+        }
 
-    if not filled_responses:
-        st.warning("Please paste at least one chatbot response before running the benchmark.")
-        return
+        if not filled_responses:
+            st.warning("Please paste at least one chatbot response before running the benchmark.")
+            return
 
-    benchmark_result = run_benchmark_from_responses(selected_cases, filled_responses)
+        benchmark_result = run_benchmark_from_responses(selected_cases, filled_responses)
+    else:
+        benchmark_result = api_benchmark_result
+
     saved_count = add_benchmark_results_to_history(benchmark_result, benchmark_source)
     results_df = benchmark_to_dataframe(benchmark_result)
 
@@ -1647,7 +1772,7 @@ def main() -> None:
             st.caption(CATEGORY_DESCRIPTIONS[category])
 
         st.markdown("---")
-        st.caption("v0.8 API-Based Model Testing")
+        st.caption("v0.9 API Benchmark Execution")
 
     render_hero()
 
