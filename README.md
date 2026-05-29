@@ -80,8 +80,9 @@ This project focuses on practical, transparent evaluation rather than black-box 
 - History CSV, JSON, and Markdown export
 - Clear history
 - v0.8 optional one-prompt OpenAI-compatible API connection test
+- v0.9 optional selected-case API benchmark execution
 
-Manual Paste remains the default benchmark workflow. Full benchmark API execution is not enabled yet.
+Manual Paste remains the default benchmark workflow. Optional selected-case API benchmark execution is available in v0.9 behind explicit confirmation.
 
 ---
 
@@ -134,17 +135,34 @@ This makes LLM ShieldBench more than a single-response checker. It becomes a lig
 
 ### 3. v0.8 API Connection Test
 
-v0.8 adds an optional one-prompt OpenAI-compatible API connection test inside Benchmark Mode.
+v0.8 added an optional one-prompt OpenAI-compatible API connection test inside Benchmark Mode.
 
 This test:
 
 - Runs only when the user clicks the test button
 - Sends one prompt only
-- Does not run the full benchmark through an API
+- Helps verify API connectivity before benchmark execution
 - Keeps Manual Paste as the default benchmark workflow
 - Uses a password input for the API key in Streamlit
 
 Do not hardcode API keys, paste real keys into files, or commit secrets. Future configuration can use environment variables or Streamlit secrets, but `.env` files and secret values should stay out of git.
+
+---
+
+### 4. v0.9 API Benchmark Execution
+
+v0.9 adds optional selected-case API benchmark execution through the OpenAI-compatible adapter path.
+
+This workflow:
+
+- Keeps Manual Paste as the default and safest benchmark workflow
+- Runs only after explicit user action and a confirmation checkbox
+- Sends only the currently selected benchmark cases to the configured API provider
+- May incur API provider costs
+- Reuses the existing benchmark scoring, report, download, and history flow
+- Is not multi-model comparison
+
+API keys are entered through Streamlit password inputs and must never be committed, hardcoded, or shared in screenshots.
 
 ---
 
@@ -283,6 +301,7 @@ http://localhost:8501
 ## Test Commands
 
 ```bash
+python3 scripts/v09_api_benchmark_smoke_test.py
 python3 scripts/v08_adapter_smoke_test.py
 python3 scripts/v07_adapter_smoke_test.py
 python3 -m py_compile app.py src/benchmark.py src/model_adapters.py src/scoring.py src/report_generator.py
@@ -296,7 +315,9 @@ The adapter smoke tests are mock-only. They do not require real API keys and do 
 
 - Manual Paste remains the default and safest benchmark workflow.
 - The v0.8 API connection test is optional and runs only after an explicit button click.
-- Full benchmark API execution is not enabled yet.
+- The v0.9 API benchmark execution path is optional and requires explicit confirmation.
+- Selected-case API benchmark execution may send prompts to a configured API provider and may incur provider costs.
+- API keys must not be stored in reports, downloads, history, generated outputs, or exported files.
 - Do not commit `.env`, Streamlit secrets, API keys, generated exports, caches, `.venv`, or `.openclaw`.
 - Do not paste real API keys into source files, docs, screenshots, issues, or reports.
 - Do not share screenshots that reveal API keys or private endpoint credentials.
@@ -443,9 +464,18 @@ General interpretation:
 - Standard-library request path
 - Mock-only automated tests
 - Manual Paste remains the default benchmark workflow
-- Full benchmark API execution is not enabled yet
 
-### v0.9 — Multi-Model Comparison
+### v0.9 — API Benchmark Execution
+
+- Optional selected-case API benchmark execution
+- Explicit confirmation before sending benchmark prompts to a configured API provider
+- OpenAI-compatible adapter runtime path
+- Existing benchmark scoring, report, download, and history flow reused
+- Mock-only automated backend tests
+- Manual Paste remains the default benchmark workflow
+- Not multi-model comparison
+
+### v1.0+ — Multi-Model Comparison
 
 - Model comparison mode
 - Model-wise scores
@@ -513,9 +543,9 @@ MIT License
 ## Status
 
 ```text
-Current Version: v0.8 API-Based Model Testing
-Implemented Through: v0.8 optional one-prompt API connection test
-Next Version: v0.8 full benchmark API execution planning
+Current Version: v0.9 API Benchmark Execution
+Implemented Through: v0.9 optional selected-case API benchmark execution
+Next Version: v1.0+ Multi-Model Comparison planning
 Status: Active Development
 Project Type: Open-source AI safety evaluation tool
 ```
