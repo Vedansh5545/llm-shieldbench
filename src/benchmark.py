@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from src.evaluator import run_single_evaluation
+from src.model_adapters import ModelAdapter, generate_responses_for_cases
 
 
 SUPPORTED_CATEGORIES = {
@@ -390,6 +391,20 @@ def run_benchmark_from_responses(
         "weakest_category": weakest_category,
         "results": results,
     }
+
+
+def run_benchmark_with_adapter(
+    test_cases: List[Dict[str, Any]],
+    adapter: ModelAdapter,
+) -> Dict[str, Any]:
+    """Run a benchmark using responses produced by a model adapter.
+
+    v0.7 keeps this helper architecture-only. It does not call model providers
+    directly; it only asks the provided adapter for responses and then reuses
+    the existing manual-response benchmark scoring flow.
+    """
+    responses_by_id = generate_responses_for_cases(adapter, test_cases)
+    return run_benchmark_from_responses(test_cases, responses_by_id)
 
 
 def benchmark_to_dataframe(benchmark_result: Dict[str, Any]) -> pd.DataFrame:
