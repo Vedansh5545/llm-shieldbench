@@ -1222,10 +1222,10 @@ def get_benchmark_cases_from_ui() -> tuple[list[dict], str] | tuple[None, None]:
 
 
 def render_optional_api_connection_test() -> None:
-    st.markdown("### Optional v0.8 API Connection Test")
+    st.markdown("### Optional API Connection Test")
     st.caption(
         "This one-prompt test is optional and only runs when you click the test button. "
-        "For batch testing, use the separate v0.9 API benchmark section below with confirmation."
+        "For batch testing, use the separate API benchmark section below with confirmation."
     )
 
     with st.form("v08_api_connection_test_form"):
@@ -1319,7 +1319,7 @@ def render_optional_api_connection_test() -> None:
 
 
 def render_optional_api_benchmark_execution(selected_cases: list[dict]) -> dict | None:
-    with st.expander("Optional v0.9 API Benchmark Execution", expanded=False):
+    with st.expander("Optional API Benchmark Execution", expanded=False):
         st.warning(
             "This optional path sends the currently selected benchmark prompts to "
             "your configured API provider and may incur API costs. Manual Paste "
@@ -1490,8 +1490,8 @@ def render_benchmark_mode() -> None:
     )
 
     st.info(
-        "Manual Paste remains the default and safest benchmark workflow. v0.9 "
-        "adds optional selected-case API benchmark execution behind explicit confirmation."
+        "Manual Paste remains the default and safest benchmark workflow. "
+        "Optional selected-case API benchmark execution is available behind explicit confirmation."
     )
 
     with st.expander("Adapter foundation status", expanded=False):
@@ -1772,7 +1772,7 @@ def main() -> None:
             st.caption(CATEGORY_DESCRIPTIONS[category])
 
         st.markdown("---")
-        st.caption("v0.9 API Benchmark Execution")
+        st.caption("v1.0 Public Release Candidate")
 
     render_hero()
 

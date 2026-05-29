@@ -498,7 +498,9 @@ def get_adapter_options() -> list[dict]:
             "available": False,
             "default": False,
             "description": (
-                "Configuration-only v0.8 placeholder. Real API execution is not enabled."
+                "OpenAI-compatible runtime path for optional API testing and "
+                "selected-case benchmark execution. Requires explicit configuration "
+                "and confirmation in the UI."
             ),
         },
     ]
