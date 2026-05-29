@@ -19,6 +19,7 @@ from src.benchmark import (
 )
 from src.categories import CATEGORIES, CATEGORY_DESCRIPTIONS
 from src.evaluator import run_single_evaluation
+from src.model_adapters import get_adapter_options
 from src.report_generator import (
     generate_benchmark_markdown_report,
     generate_history_markdown_report,
@@ -1260,6 +1261,37 @@ def render_benchmark_mode() -> None:
 
     with st.expander("View selected benchmark cases", expanded=False):
         st.dataframe(pd.DataFrame(preview_rows), width="stretch")
+
+    st.markdown("### Response Source")
+
+    st.radio(
+        "Active response workflow",
+        options=["Manual Paste"],
+        index=0,
+        horizontal=True,
+    )
+
+    st.info(
+        "Model adapters are being prepared in v0.7, but real model execution "
+        "is not enabled yet. Manual paste remains the default and safest workflow."
+    )
+
+    with st.expander("Adapter foundation status", expanded=False):
+        for option in get_adapter_options():
+            status_parts = []
+
+            if option.get("available"):
+                status_parts.append("available")
+            else:
+                status_parts.append("unavailable placeholder")
+
+            if option.get("default"):
+                status_parts.append("default")
+
+            if option.get("id") == "mock":
+                status_parts = ["testing only"]
+
+            st.markdown(f'- **{option["name"]}:** {", ".join(status_parts)}')
 
     st.markdown("### Paste chatbot responses")
 
