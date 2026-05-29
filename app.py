@@ -19,7 +19,13 @@ from src.benchmark import (
 )
 from src.categories import CATEGORIES, CATEGORY_DESCRIPTIONS
 from src.evaluator import run_single_evaluation
-from src.model_adapters import get_adapter_options
+from src.model_adapters import (
+    ModelAdapterError,
+    OpenAICompatibleAdapter,
+    OpenAICompatibleConfig,
+    get_adapter_options,
+    openai_compatible_http_request,
+)
 from src.report_generator import (
     generate_benchmark_markdown_report,
     generate_history_markdown_report,
@@ -1214,6 +1220,104 @@ def get_benchmark_cases_from_ui() -> tuple[list[dict], str] | tuple[None, None]:
     return test_cases, "custom"
 
 
+def render_optional_api_connection_test() -> None:
+    st.markdown("### Optional v0.8 API Connection Test")
+    st.caption(
+        "API testing is optional. Manual Paste remains the default benchmark workflow. "
+        "Full benchmark API execution is not enabled yet, and this call only runs "
+        "when you click the test button."
+    )
+
+    with st.form("v08_api_connection_test_form"):
+        api_base_url = st.text_input(
+            "Base URL",
+            value="",
+            placeholder="https://your-api-host.example/v1/chat/completions",
+        )
+        api_model = st.text_input(
+            "Model name",
+            value="",
+            placeholder="your-model-name",
+        )
+        api_key = st.text_input(
+            "API key",
+            value="",
+            type="password",
+            placeholder="Paste only when you are ready to test",
+        )
+        test_prompt = st.text_area(
+            "Test prompt",
+            value="Reply with one short sentence confirming the connection works.",
+            height=90,
+        )
+
+        settings_col1, settings_col2, settings_col3 = st.columns(3)
+
+        with settings_col1:
+            temperature = st.number_input(
+                "Temperature",
+                min_value=0.0,
+                max_value=2.0,
+                value=0.0,
+                step=0.1,
+            )
+
+        with settings_col2:
+            max_tokens = st.number_input(
+                "Max tokens",
+                min_value=1,
+                max_value=4096,
+                value=128,
+                step=1,
+            )
+
+        with settings_col3:
+            timeout_seconds = st.number_input(
+                "Timeout seconds",
+                min_value=1.0,
+                max_value=120.0,
+                value=30.0,
+                step=1.0,
+            )
+
+        submitted = st.form_submit_button("Run one-prompt API test", width="stretch")
+
+    if not submitted:
+        return
+
+    try:
+        config = OpenAICompatibleConfig(
+            api_key=api_key,
+            base_url=api_base_url,
+            model=api_model,
+            timeout_seconds=float(timeout_seconds),
+            max_tokens=int(max_tokens),
+            temperature=float(temperature),
+        ).validate()
+
+        adapter = OpenAICompatibleAdapter(
+            config,
+            request_fn=lambda payload, headers: openai_compatible_http_request(
+                payload,
+                headers,
+                config,
+            ),
+        )
+        response = adapter.generate_response(test_prompt)
+
+    except ModelAdapterError as exc:
+        st.error(str(exc))
+        return
+
+    st.success("One-prompt API test completed.")
+    st.text_area(
+        "Model response",
+        value=response,
+        height=140,
+        disabled=True,
+    )
+
+
 def render_benchmark_mode() -> None:
     st.markdown('<div class="section-title">Benchmark Mode</div>', unsafe_allow_html=True)
 
@@ -1272,8 +1376,9 @@ def render_benchmark_mode() -> None:
     )
 
     st.info(
-        "Model adapters are being prepared in v0.7, but real model execution "
-        "is not enabled yet. Manual paste remains the default and safest workflow."
+        "Manual Paste remains the default and safest benchmark workflow. v0.8 "
+        "adds an optional one-prompt API connection test below, but full "
+        "benchmark API execution is not enabled yet."
     )
 
     with st.expander("Adapter foundation status", expanded=False):
@@ -1292,6 +1397,8 @@ def render_benchmark_mode() -> None:
                 status_parts = ["testing only"]
 
             st.markdown(f'- **{option["name"]}:** {", ".join(status_parts)}')
+
+    render_optional_api_connection_test()
 
     st.markdown("### Paste chatbot responses")
 
@@ -1540,7 +1647,7 @@ def main() -> None:
             st.caption(CATEGORY_DESCRIPTIONS[category])
 
         st.markdown("---")
-        st.caption("v0.6 Benchmark Analytics")
+        st.caption("v0.8 API-Based Model Testing")
 
     render_hero()
 

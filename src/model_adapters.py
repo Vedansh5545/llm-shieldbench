@@ -11,7 +11,10 @@ consistent interface.
 
 from __future__ import annotations
 
+import json
 import os
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 
 
@@ -208,22 +211,98 @@ class OpenAICompatibleConfig:
 
 
 class OpenAICompatibleAdapter(ModelAdapter):
-    """Configuration-only OpenAI-compatible adapter placeholder for v0.8.
+    """Fake-transport OpenAI-compatible adapter placeholder for v0.8.
 
-    Real API execution is intentionally not enabled in this checkpoint.
+    Real API execution is intentionally not enabled by default. Tests may inject
+    a fake request function to verify request-building and response-parsing
+    behavior without making network calls.
     """
 
     name = "OpenAI-Compatible Adapter"
     enabled = False
 
-    def __init__(self, config: OpenAICompatibleConfig) -> None:
+    def __init__(self, config: OpenAICompatibleConfig, request_fn=None) -> None:
         self.config = config.validate()
+        self.request_fn = request_fn
 
     def generate_response(self, prompt: str, *, case: dict | None = None) -> str:
-        """Raise because v0.8 Checkpoint 1 does not execute real API calls."""
-        raise ModelAdapterError(
-            "OpenAI-compatible API execution is not enabled in v0.8 Checkpoint 1."
-        )
+        """Generate a response only through an injected fake request function."""
+        clean_prompt = str(prompt or "").strip()
+
+        if not clean_prompt:
+            raise ModelAdapterError("OpenAI-compatible adapter received an empty prompt.")
+
+        if self.request_fn is None:
+            raise ModelAdapterError(
+                "OpenAI-compatible API execution is not enabled or configured yet."
+            )
+
+        payload = self.build_request_payload(clean_prompt)
+        headers = self.build_request_headers()
+
+        try:
+            response_data = self.request_fn(payload, headers)
+        except ModelAdapterError:
+            raise
+        except Exception as exc:
+            raise ModelAdapterError(
+                f"OpenAI-compatible transport failed: {exc.__class__.__name__}."
+            ) from exc
+
+        return self.parse_response(response_data)
+
+    def build_request_payload(self, prompt: str) -> dict:
+        """Build an OpenAI-compatible chat completions request payload."""
+        return {
+            "model": self.config.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens,
+        }
+
+    def build_request_headers(self) -> dict[str, str]:
+        """Build headers without exposing them in logs or UI."""
+        return {
+            "Authorization": f"Bearer {self.config.api_key}",
+            "Content-Type": "application/json",
+        }
+
+    def parse_response(self, response_data: object) -> str:
+        """Parse a fake OpenAI-compatible response dictionary."""
+        if not isinstance(response_data, dict):
+            raise ModelAdapterError("OpenAI-compatible response is malformed.")
+
+        choices = response_data.get("choices")
+
+        if not choices:
+            raise ModelAdapterError("OpenAI-compatible response is missing choices.")
+
+        if not isinstance(choices, list):
+            raise ModelAdapterError("OpenAI-compatible response choices are malformed.")
+
+        first_choice = choices[0]
+
+        if not isinstance(first_choice, dict):
+            raise ModelAdapterError("OpenAI-compatible response choice is malformed.")
+
+        message = first_choice.get("message")
+
+        if not isinstance(message, dict):
+            raise ModelAdapterError("OpenAI-compatible response message is malformed.")
+
+        content = message.get("content")
+
+        if not isinstance(content, str) or not content.strip():
+            raise ModelAdapterError(
+                "OpenAI-compatible response content is empty or invalid."
+            )
+
+        return content.strip()
 
 
 def _read_config_value(
@@ -270,6 +349,60 @@ def _parse_temperature(value: object) -> float:
 
     if parsed < 0:
         raise ModelAdapterError("temperature must be 0 or greater.")
+
+    return parsed
+
+
+def openai_compatible_http_request(
+    payload: dict,
+    headers: dict[str, str],
+    config: OpenAICompatibleConfig,
+    urlopen_fn=None,
+) -> dict:
+    """Send one OpenAI-compatible chat request using the standard library.
+
+    This helper is only used when the caller explicitly injects it into an
+    adapter. It never prints headers or secrets.
+    """
+    opener = urllib.request.urlopen if urlopen_fn is None else urlopen_fn
+
+    try:
+        request = urllib.request.Request(
+            config.base_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        with opener(request, timeout=config.timeout_seconds) as response:
+            raw_body = response.read().decode("utf-8")
+
+        parsed = json.loads(raw_body)
+
+    except urllib.error.HTTPError as exc:
+        raise ModelAdapterError(
+            f"OpenAI-compatible HTTP request failed with status {exc.code}."
+        ) from exc
+
+    except urllib.error.URLError as exc:
+        raise ModelAdapterError(
+            f"OpenAI-compatible HTTP request failed: {exc.reason}."
+        ) from exc
+
+    except TimeoutError as exc:
+        raise ModelAdapterError("OpenAI-compatible HTTP request timed out.") from exc
+
+    except json.JSONDecodeError as exc:
+        raise ModelAdapterError(
+            "OpenAI-compatible HTTP response was not valid JSON."
+        ) from exc
+
+    except OSError as exc:
+        raise ModelAdapterError(
+            f"OpenAI-compatible HTTP request failed: {exc.__class__.__name__}."
+        ) from exc
+
+    if not isinstance(parsed, dict):
+        raise ModelAdapterError("OpenAI-compatible HTTP response JSON is malformed.")
 
     return parsed
 
