@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/vedanshtembhre/llm-shieldbench/blob/main/SECURITY.md
+    about: Please follow SECURITY.md and do not open public issues for sensitive security reports.
+  - name: Contributing guide
+    url: https://github.com/vedanshtembhre/llm-shieldbench/blob/main/CONTRIBUTING.md
+    about: Review contribution scope, safety expectations, and project workflow before proposing changes.
