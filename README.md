@@ -162,6 +162,8 @@ How to use it:
 4. Review validation warnings or errors before running.
 5. Paste responses manually or use the optional selected-case API benchmark path.
 
+You can start from the tracked example file at `examples/custom_benchmark_sample.json`.
+
 ---
 
 ### 4. Evaluation History
