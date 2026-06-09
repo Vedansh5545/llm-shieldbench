@@ -86,6 +86,32 @@ Manual Paste remains the default benchmark workflow. v1.0 is focused on public r
 
 ---
 
+## Demo Preview
+
+The screenshots below use safe sample prompts and do not show real API keys.
+
+### Single Evaluation
+
+![Single Evaluation](assets/screenshots/01-single-evaluation.png)
+
+### Benchmark Results
+
+![Benchmark Results](assets/screenshots/02-benchmark-results.png)
+
+### Benchmark Analytics
+
+![Benchmark Analytics](assets/screenshots/03-benchmark-analytics.png)
+
+### Custom Benchmark Upload
+
+![Custom Benchmark Upload](assets/screenshots/04-custom-benchmark-upload.png)
+
+### Optional API Benchmark Execution
+
+![Optional API Benchmark Execution](assets/screenshots/05-api-benchmark-execution.png)
+
+---
+
 ## Modes
 
 ### 1. Single Evaluation Mode
